@@ -27,8 +27,7 @@ def generateOrganizationFilesystem(org_name):
     'attributes': {
       'exec': 'off',
       'setuid': 'off',
-      'canmount': 'off',
-      'mountpoint': 'none'
+      'canmount': 'off'
     },
     'snapshots': {
       'snapshot': False  #don't snapshot the organizational filesystem, nothing lies there directly

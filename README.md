@@ -5,7 +5,7 @@ Currently, the storage volumes (ZFS filesystem or ZFS virtual block device) are 
 
 ## Requirements
 
-An `apt`- or `pacman`-based Linux distribution.
+A Linux distribution.
 
 ## Role Variables (storage or hypervisor)
 

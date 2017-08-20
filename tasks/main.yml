@@ -1,7 +1,4 @@
 ---
-- include: storage-install.yml
-  static: no
-  when: vm_facts_variant == 'storage'
 - include: storage-facts.yml
   static: no
   when: vm_facts_variant == 'storage'

@@ -1,19 +1,11 @@
 ---
-- name: Copy storage fact script
-  copy:
-    src: "scripts/storage-facts.py"
-    dest: "/tmp/storage-facts.py"
-    owner: root
-    group: root
-    mode: 0100
-
 - name: Write hostvars to file
   copy:
     content: "{{ hostvars }}"
     dest: "/tmp/storage_hostvars"
 
 - name: Run storage-facts script
-  command: "/tmp/storage-facts.py {{ ansible_hostname }} /tmp/storage_hostvars"
+  script: "scripts/storage-facts.py {{ ansible_hostname }} /tmp/storage_hostvars"
   register: storage_factgen
 
 - name: Set storage facts
