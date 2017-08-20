@@ -1,2 +1,4 @@
 ---
-# tasks file for .
+- include: storage-facts.yml
+  static: no
+  when: vm_facts_variant == 'storage'
