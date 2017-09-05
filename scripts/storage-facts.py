@@ -36,13 +36,13 @@ def generateOrganizationFilesystem(org_name):
   return org_fs
 
 
-def generateIscsiTarget(fs_prefix, org, name):
+def generateIscsiTarget(name, path):
   """Generates the configuration for an iSCSI target"""
   target = {
-    'name': fs_prefix + org + '-' + name,
+    'name': name,
     'disks': {
-      'name': fs_prefix + org + '-' + name,
-      'path': fs_prefix + org + '/' + name,
+      'name': name,
+      'path': path,
       'type': 'iblock'
     },
     'initiators': []
@@ -159,7 +159,7 @@ def generateFacts(original_facts, storage_host):
 
       #create iSCSI target config, if it doesn't already exist
       if not any(d['name'] == fs_prefix + org + '-' + host for d in facts['iscsi_targets']):
-        target = generateIscsiTarget(fs_prefix, org, host)
+        target = generateIscsiTarget(host, fs_prefix + org + '/' + host)
         #add all initiators (with authentication) defined by the storage vars
         for initiator in iscsi_initiators:
           #If an initiator has no authentication defined, don't use it and mark the host as failed
