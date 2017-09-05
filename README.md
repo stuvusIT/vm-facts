@@ -15,6 +15,7 @@ A Linux distribution.
 | `vm_zfs_parent_prefix` | `''`                | A prefix string for ZFS filesystems and ZVOLs, e.g. `tank/vms/`.                       |
 | `vm_nfs_access_ips`    | `[]`                | A list of IPs that shall get read/write access on all defined VMs.                     |
 | `vm_iscsi_initiators`  | `[]`                | List of iSCSI initiators. See [Initiators](#initiators).                               |
+| `vm_iscsi_portals`     | `[]`                | List of iSCSI portals (dicts that contain the `ip` and optionally the `port`) that are allowed to connect to iSCSI targets. |
 
 ### Initiators
 
