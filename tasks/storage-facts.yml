@@ -3,10 +3,12 @@
   copy:
     content: "{{ hostvars }}"
     dest: "/tmp/storage_hostvars"
+  changed_when: false
 
 - name: Run storage-facts script
   script: "scripts/storage-facts.py {{ ansible_hostname }} /tmp/storage_hostvars"
   register: storage_factgen
+  changed_when: false
 
 - name: Set storage facts
   set_fact:
