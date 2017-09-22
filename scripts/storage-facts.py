@@ -176,6 +176,8 @@ def generateFacts(original_facts, storage_host):
     else:
       # If an illegal root_type has been used, mark the host as failed accordingly
       failed_names['root_type'].append(host)
+  facts['zfs_filesystems'] = sorted(facts['zfs_filesystems'], key=lambda k: k['name'])
+  facts['zvols'] = sorted(facts['zvols'], key=lambda k: k['name'])
   # Return the result, consisting of the failed hosts and the extended hostvars for the current storage server
   result = {'failed_hosts': failed_names, 'new_hostvars': facts}
   return result
