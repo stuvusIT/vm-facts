@@ -9,13 +9,13 @@ A Linux distribution.
 
 ## Role Variables (storage or hypervisor)
 
-| Name                   | Default / Mandatory | Description                                                                            |
-|:-----------------------|:--------------------|:---------------------------------------------------------------------------------------|
-| `vm_facts_variant`     | `storage`           | Either `storage` or hypervisor. Needed to set the correct facts according to the role. |
-| `vm_zfs_parent_prefix` | `''`                | A prefix string for ZFS filesystems and ZVOLs, e.g. `tank/vms/`.                       |
-| `vm_nfs_access_ips`    | `[]`                | A list of IPs that shall get read/write access on all defined VMs.                     |
-| `vm_iscsi_initiators`  | `[]`                | List of iSCSI initiators. See [Initiators](#initiators).                               |
-| `vm_iscsi_portals`     | `[]`                | List of iSCSI portals (dicts that contain the `ip` and optionally the `port`) that are allowed to connect to iSCSI targets. |
+| Name                   | Default / Mandatory | Description                                                                                                                                   |
+|:-----------------------|:--------------------|:----------------------------------------------------------------------------------------------------------------------------------------------|
+| `vm_facts_variant`     | `storage`           | Either `storage` or hypervisor. Needed to set the correct facts according to the role.                                                        |
+| `vm_zfs_parent_prefix` | `''`                | A prefix string for ZFS filesystems and ZVOLs, e.g. `tank/vms/`.                                                                              |
+| `vm_nfs_options`       | `[]`                | A list of NFS options, e.g. a default IP that is added to all exports. The option format must conform to the ZFS `sharenfs` attribute format. |
+| `vm_iscsi_initiators`  | `[]`                | List of iSCSI initiators. See [Initiators](#initiators).                                                                                      |
+| `vm_iscsi_portals`     | `[]`                | List of iSCSI portals (dicts that contain the `ip` and optionally the `port`) that are allowed to connect to iSCSI targets.                   |
 
 ### Initiators
 
@@ -33,15 +33,25 @@ A Linux distribution.
 As this role looks at all `hostvars`, the `vm` dict also affect this role, even if the respective hosts don't run it:
 
 ### vm
-| Name             | Default / Mandatory | Description                                                                                                                                                                                                                                                      |
-|:-----------------|:--------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `memory`         | :heavy_check_mark:  | The amount of memory reserved for this VM [MiB].                                                                                                                                                                                                                 |
-| `vcpus`          | :heavy_check_mark:  | The number of virtual CPU cores simulated for this VM.                                                                                                                                                                                                           |
-| `org`            | :heavy_check_mark:  | The organization this VM belongs to. Depending on this value, the filesystem or ZVOL will be placed at a different hierarchy level.                                                                                                                              |
-| `size`           | :heavy_check_mark:  | Size of the VM, e.g. `15G`. Depending on the `root_type`, the size may be changed later easily or with a bit of work.                                                                                                                                            |
-| `root_type`      | `zvol`              | `filesystem` to create two filesystems (`{{name}}-root` and `{{name}}-data`) and export them via NFS. `zvol` to create a virtual blockdevice (which is of static size) and export it via iSCSI.                                                                  |
-| `zfs_attributes` | `{}`                | A dict to set specific ZFS filesystem/ZVOL attributes.                                                                                                                                                                                                           |
-| `nfs_ip`         |                     | One IP that is allowed to access the NFS shares, besides the ones defined in `vm_nfs_access_ips`. If this var is left empty, all IPs that are defined in the hostvar `interfaces` are granted NFS access. This var is only needed if `root_type` is `filesystem` |
+| Name          | Default / Mandatory                                                               | Description                                                                                                                                                                                                                      |
+|:--------------|:----------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `memory`      | :heavy_check_mark:                                                                | The amount of memory reserved for this VM [MiB].                                                                                                                                                                                 |
+| `vcpus`       | :heavy_check_mark:                                                                | The number of virtual CPU cores simulated for this VM.                                                                                                                                                                           |
+| `org`         | :heavy_check_mark:                                                                | The organization this VM belongs to. Depending on this value, the filesystem or ZVOL will be placed at a different hierarchy level.                                                                                              |
+| `size`        | :heavy_check_mark:                                                                | Size of the root image or filesystem, e.g. `15G`. Depending on the `root_type`, the size may be changed later easily or with a bit of work.                                                                                      |
+| `root_type`   | `zvol`                                                                            | `zvol` to create a virtual blockdevice (which is of static size) and export it via iSCSI. `filesystem` to create a root filesystem `{{name}}-root` and optionally other filesystems (see `filesystems`) and export them via NFS. |
+| `filesystems` | `[{'name': root, 'zfs_attributes':{'quota': {{size}}, 'reservation': {{size}}}}]` | A list containing filesystem definitions, see [filesystems](#filesystems).                                                                                                                                                       |
+
+#### filesystems
+
+`filesystems` is a list of dicts that describe filesystems for one VM. A `root` filesystem will always be created, with `quota` and `reservation` set to the VM `size` value. The `filesystems` var is only respected if `root_type` is `filesystem`.
+
+| Name             | Default / Mandatory      | Description                                                                                                                                                                                                                                                                              |
+|:-----------------|:-------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `name`           | :heavy_check_mark:       | `name`-suffix of the filesystem. The final name consists of the vm name and the filesystem name, delimited by a dash.                                                                                                                                                                    |
+| `zfs_attributes` | `{}`                     | A dict containing any ZFS attributes that shall be set for this filesystem. It is recommended to define a `quota`, though this may also be done in the default ZFS attributes on the actual [zfs-storage](https://github.com/stuvusIT/zfs-storage/) server                               |
+| `nfs_options`    | `[rw=@{{interface.ip}}]` | A list of NFS options that are set for this NFS export. The default is an rw access for every IP defined in the hostvar `interfaces`. The options have to conform to the ZFS `sharenfs` attribute format. The options defined in `vm_nfs_options` will be set in addition to this value. |
+
 
 
 ## Example Playbook
