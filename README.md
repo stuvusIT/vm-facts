@@ -71,6 +71,8 @@ Including an example of how to use your role (for instance, with variables passe
          password: mypassword
          userid_mutual: sharedkey
          password_mutual: sharedsecret
+      vm_nfs_options:
+       - rw=@192.168.10.2
 ```
 
 ### Example VM
@@ -82,13 +84,27 @@ vm:
   org: misc
   size: 15G
   root_type: filesystem
-  nfs_ip: '192.168.10.52' #only this IP can access NFS on the storage server
+  filesystems:
+   - name: data
+     zfs_attributes:
+       quota: 50G
+     nfs_options:
+      - rw=@192.168.10.52
 interfaces:
   - mac: 'AA:BB:CC:FE:19:AA'
     ip:  '192.168.10.52'
   - mac: 'AA:BB:CC:FE:19:AB'
     ip:  '192.168.100.52'
 ```
+
+### Result
+
+Assuming the vm is named `web01`, these two filesystems will be created:
+
+| Name                       | ZFS attributes                                                                                   |
+|:---------------------------|:-------------------------------------------------------------------------------------------------|
+| `tank/vms/misc/web01-root` | `quota=15G`, `reservation`=15G, `sharenfs=rw=@192.168.10.2,rw=@192.168.10.52,rw=@192.168.100.52` |
+| `tank/vms/misc/web01-data` | `quota=50G`, `sharenfs=rw=@192.168.10.2,rw=@192.168.10.52`                                       |
 
 
 ## License
