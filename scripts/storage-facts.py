@@ -145,7 +145,7 @@ def generateFacts(original_facts, storage_host):
           attributes['reservation'] = config['size']
           nfs_options_to_set.append('no_root_squash')
         attributes['sharenfs'] = 'off' if not nfs_options_to_set else ','.join(
-          set(nfs_options_to_set))
+          sorted(set(nfs_options_to_set)))
         # Create and add root and data filesystems if necessary
         if fs_prefix + org + '/' + host + '-' + fs['name'] not in facts['zfs_filesystems']:
           zfs_fs = {
