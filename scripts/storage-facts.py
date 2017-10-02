@@ -137,12 +137,13 @@ def generateFacts(original_facts, storage_host):
         if 'name' not in fs:
           continue
         attributes = fs['zfs_attributes'] if 'zfs_attributes' in fs else {}
-        # Set size if it is the root filesystem
+        # Use override NFS options if they exist, otherwise use the default
+        nfs_options_to_set = fs['nfs_options'] + nfs_options if 'nfs_options' in fs else default_nfs_options
+        # Set sizes and no_root_squash if it is the root filesystem
         if fs['name'] == 'root':
           attributes['quota'] = config['size']
           attributes['reservation'] = config['size']
-        # Use override NFS options if they exist, otherwise use the default
-        nfs_options_to_set = fs['nfs_options'] + nfs_options if 'nfs_options' in fs else default_nfs_options
+          nfs_options_to_set.append('no_root_squash')
         attributes['sharenfs'] = 'off' if not nfs_options_to_set else ','.join(
           set(nfs_options_to_set))
         # Create and add root and data filesystems if necessary
