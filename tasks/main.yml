@@ -1,4 +1,3 @@
 ---
-- include: storage-facts.yml
-  static: no
+- include_tasks: storage-facts.yml
   when: vm_facts_variant == 'storage'
