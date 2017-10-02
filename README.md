@@ -99,10 +99,10 @@ interfaces:
 
 Assuming the vm is named `web01`, these two filesystems will be created:
 
-|            Name            | ZFS attributes                                                                                   |
-|:--------------------------:|:-------------------------------------------------------------------------------------------------|
-| `tank/vms/misc/web01-root` | `quota=15G`, `reservation=15G`, `sharenfs=rw=@192.168.10.2,rw=@192.168.10.52,rw=@192.168.100.52` |
-| `tank/vms/misc/web01-data` | `quota=50G`, `sharenfs=rw=@192.168.10.2,rw=@192.168.10.52`                                       |
+|            Name            | ZFS attributes                                                                                                  |
+|:--------------------------:|:----------------------------------------------------------------------------------------------------------------|
+| `tank/vms/misc/web01-root` | `quota=15G`, `reservation=15G`, `sharenfs=no_root_squash,rw=@192.168.10.2,rw=@192.168.10.52,rw=@192.168.100.52` |
+| `tank/vms/misc/web01-data` | `quota=50G`, `sharenfs=rw=@192.168.10.2,rw=@192.168.10.52`                                                      |
 
 
 ## License
