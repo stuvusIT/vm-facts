@@ -164,7 +164,7 @@ def generateFacts(original_facts, storage_host):
 
       # Create iSCSI target config, if it doesn't already exist
       if not any(d['name'] == fs_prefix + org + '-' + host for d in facts['iscsi_targets']):
-        target = generateIscsiTarget(host, fs_prefix + org + '/' + host, portals)
+        target = generateIscsiTarget(org + '-' + host, fs_prefix + org + '/' + host, portals)
         # Add all initiators (with authentication) defined by the storage vars
         for initiator in iscsi_initiators:
           # If an initiator has no authentication defined, don't use it and mark the host as failed
