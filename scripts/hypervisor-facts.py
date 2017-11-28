@@ -2,6 +2,7 @@
 # This script generates hypervisor (xen) facts out of the hostvars of each VM
 import json
 import optparse
+import re
 
 
 def main():
@@ -21,6 +22,7 @@ def main():
 def generateFacts(original_facts, hypervisor_host):
   # facts are the hostvars of the current hypervisor host
   facts = original_facts[hypervisor_host] if hypervisor_host in original_facts else {}
+  cidr_suffix = facts['vm_facts_default_cidr_suffix'] if 'vm_facts_default_cidr_suffix' in facts else '/24'
   # List of hostnames that have missing VM vars. This lists will be printed in tasks for easier debugging
   failed_names = {'interfaces': [], 'description': []}
 
@@ -60,6 +62,11 @@ def generateFacts(original_facts, hypervisor_host):
         config['interfaces'] = original_facts[host]['interfaces']
       else:
         failed_names['interfaces'].append(host)
+
+    # Set CIDR subnet mask
+    for interface in config['interfaces']:
+      if 'ip' in interface and not re.search("/[0-9]+", interface['ip']):
+        interface['ip'] = interface['ip'] + cidr_suffix
 
     # Remove unneeded filesystems attribute
     if 'filesystems' in config:

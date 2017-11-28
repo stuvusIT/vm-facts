@@ -28,6 +28,10 @@ A Linux distribution.
 | `userid_mutual`   |                     | `userid_mutual` used to authenticate the target          |
 | `password_mutual` |                     | `password_mutual` used to authenticate the target        |
 
+## Role Variables (hypervisor)
+| Name                           | Default / Mandatory | Description                                                                                                                  |
+|:-------------------------------|:-------------------:|:-----------------------------------------------------------------------------------------------------------------------------|
+| `vm_facts_default_cidr_suffix` |        `/24`        | This suffix will be appended to all IPs in `vm.interfaces` if the IP in question does not already define a CIDR subnet mask. |
 
 ## Role Variables (VM hostvars)
 
