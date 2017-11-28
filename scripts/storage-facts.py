@@ -6,8 +6,7 @@ import optparse
 
 def main():
   p = optparse.OptionParser(
-    description=
-    'Sets the relevant ansible facts needed for a ZFS VM storage server (ZFS, NFS, iSCSI).',
+    description='Sets the relevant ansible facts needed for a ZFS VM storage server (ZFS, NFS, iSCSI).',
     usage='%prog [storage hostname] [path to file containing hostvars in json]')
   options, arguments = p.parse_args()
   if len(arguments) == 2:
@@ -73,15 +72,15 @@ def generateFacts(original_facts, storage_host):
   # facts are the hostvars of the current storage host
   facts = original_facts[storage_host] if storage_host in original_facts else {}
   # ZFS filesystem prefix to be added in front of every generated ZFS filesystem
-  fs_prefix = facts['vm_zfs_parent_prefix'] if 'vm_zfs_parent_prefix' in facts else ''
+  fs_prefix = facts['vm_facts_zfs_parent_prefix'] if 'vm_facts_zfs_parent_prefix' in facts else ''
   # List of NFS options that will be set on all exports
-  nfs_options = facts['vm_nfs_options'] if 'vm_nfs_options' in facts else []
+  nfs_options = facts['vm_facts_nfs_options'] if 'vm_facts_nfs_options' in facts else []
   # List of iSCSI initators, containing name, user and password (optionally mutual user and password)
-  iscsi_initiators = facts['vm_iscsi_initiators'] if 'vm_iscsi_initiators' in facts else []
+  iscsi_initiators = facts['vm_facts_iscsi_initiators'] if 'vm_facts_iscsi_initiators' in facts else []
   # List of portals (IPs to give iSCSI access to)
-  portals = facts['vm_iscsi_portals'] if 'vm_iscsi_portals' in facts else []
+  portals = facts['vm_facts_iscsi_portals'] if 'vm_facts_iscsi_portals' in facts else []
   # List of hostnames that have missing VM vars. This lists will be printed in tasks for easier debugging
-  failed_names = {'size': [], 'org': [], 'root_type': [], 'initiator': []}
+  failed_names = {'size': [], 'org': [], 'initiator': []}
 
   # Create dicts and prefix if not already set
   if 'zfs_filesystems' not in facts:
@@ -115,11 +114,33 @@ def generateFacts(original_facts, storage_host):
       org_fs = generateOrganizationFilesystem(fs_prefix + org)
       facts['zfs_filesystems'].append(org_fs)
 
-    # Get root type. zvol is the default
-    root_type = config['root_type'] if 'root_type' in config else 'zvol'
+    # Get storage type. filesystem is the default
+    storage_type = config['storage_type'] if 'storage_type' in config else 'filesystem'
 
-    # If the VM wants ZFS filesystems, configure them and export them via NFS
-    if root_type == 'filesystem':
+    # If the VM wants a ZVOL (virtual block device), create it and export it via iSCSI
+    if storage_type == 'blockdevice':
+      # Create ZVOL if it doesn't already exist
+      if not any(d['name'] == fs_prefix + org + '/' + host for d in facts['zvols']):
+        # volsize must be set at creation and cannot be changed later on
+        zvol = {'name': fs_prefix + org + '/' + host, 'attributes': {'volsize': config['size']}}
+        facts['zvols'].append(zvol)
+
+      # Create iSCSI target config, if it doesn't already exist
+      if not any(d['name'] == fs_prefix + org + '-' + host for d in facts['iscsi_targets']):
+        target = generateIscsiTarget(org + '-' + host, fs_prefix + org + '/' + host, portals)
+        # Add all initiators (with authentication) defined by the storage vars
+        for initiator in iscsi_initiators:
+          # If an initiator has no authentication defined, don't use it and mark the host as failed
+          if 'name' not in initiator or 'userid' not in initiator or 'password' not in initiator:
+            failed_names['initiator'].append(host)
+            continue
+          initiator_config = generateIscsiInitiator(initiator)
+          target['initiators'].append(initiator_config)
+
+        facts['iscsi_targets'].append(target)
+
+    # If the VM wants ZFS filesystems (the default), configure them and export them via NFS
+    else:
       # Default NFS options if no overrides are specified for a filesystem
       default_nfs_options = list(nfs_options)
       # Add every existing interface ip as rw export
@@ -142,42 +163,16 @@ def generateFacts(original_facts, storage_host):
         # Set sizes and no_root_squash if it is the root filesystem
         if fs['name'] == 'root':
           attributes['quota'] = config['size']
-          attributes['reservation'] = config['size']
+          if 'reservation' not in attributes:
+            attributes['reservation'] = facts[
+              'vm_facts_default_root_reservation'] if 'vm_facts_default_root_reservation' in facts else config['size']
           nfs_options_to_set.append('no_root_squash')
-        attributes['sharenfs'] = 'off' if not nfs_options_to_set else ','.join(
-          sorted(set(nfs_options_to_set)))
+        attributes['sharenfs'] = 'off' if not nfs_options_to_set else ','.join(sorted(set(nfs_options_to_set)))
         # Create and add root and data filesystems if necessary
         if fs_prefix + org + '/' + host + '-' + fs['name'] not in facts['zfs_filesystems']:
-          zfs_fs = {
-            'name': fs_prefix + org + '/' + host + '-' + fs['name'],
-            'attributes': attributes
-          }
+          zfs_fs = {'name': fs_prefix + org + '/' + host + '-' + fs['name'], 'attributes': attributes}
           facts['zfs_filesystems'].append(zfs_fs)
 
-    # If the VM wants a ZVOL (virtual block device), create it and export it via iSCSI
-    elif root_type == 'zvol':
-      # Create ZVOL if it doesn't already exist
-      if not any(d['name'] == fs_prefix + org + '/' + host for d in facts['zvols']):
-        # volsize must be set at creation and cannot be changed later on
-        zvol = {'name': fs_prefix + org + '/' + host, 'attributes': {'volsize': config['size']}}
-        facts['zvols'].append(zvol)
-
-      # Create iSCSI target config, if it doesn't already exist
-      if not any(d['name'] == fs_prefix + org + '-' + host for d in facts['iscsi_targets']):
-        target = generateIscsiTarget(org + '-' + host, fs_prefix + org + '/' + host, portals)
-        # Add all initiators (with authentication) defined by the storage vars
-        for initiator in iscsi_initiators:
-          # If an initiator has no authentication defined, don't use it and mark the host as failed
-          if 'name' not in initiator or 'userid' not in initiator or 'password' not in initiator:
-            failed_names['initiator'].append(host)
-            continue
-          initiator_config = generateIscsiInitiator(initiator)
-          target['initiators'].append(initiator_config)
-
-        facts['iscsi_targets'].append(target)
-    else:
-      # If an illegal root_type has been used, mark the host as failed accordingly
-      failed_names['root_type'].append(host)
   facts['zfs_filesystems'] = sorted(facts['zfs_filesystems'], key=lambda k: k['name'])
   facts['zvols'] = sorted(facts['zvols'], key=lambda k: k['name'])
   # Return the result, consisting of the failed hosts and the extended hostvars for the current storage server
