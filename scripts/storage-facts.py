@@ -35,37 +35,10 @@ def generateOrganizationFilesystem(org_name):
   return org_fs
 
 
-def generateIscsiTarget(name, path, portals):
+def generateIscsiTarget(name, path):
   """Generates the configuration for an iSCSI target"""
-  target = {
-    'name': name,
-    'disks': {
-      'name': name,
-      'path': path,
-      'type': 'iblock'
-    },
-    'initiators': [],
-    'portals': portals
-  }
+  target = {'name': name, 'disks': {'name': name, 'path': path}}
   return target
-
-
-def generateIscsiInitiator(initiator):
-  """Generates the configuration for one iSCSI initiator, optionally with mutual authentication"""
-  initiator_config = {
-    'name': initiator['name'],
-    'authentication': {
-      # name, userid and password are mandatory
-      'userid': initiator['userid'],
-      'password': initiator['password']
-    }
-  }
-  # Mutual authentication is optional
-  if 'userid_mutual' in initiator:
-    initiator_config['authentication']['userid_mutual'] = initiator['userid_mutual']
-  if 'password_mutual' in initiator:
-    initiator_config['authentication']['password_mutual'] = initiator['password_mutual']
-  return initiator_config
 
 
 def generateFacts(original_facts, storage_host):
@@ -75,12 +48,8 @@ def generateFacts(original_facts, storage_host):
   fs_prefix = facts['vm_facts_zfs_parent_prefix'] if 'vm_facts_zfs_parent_prefix' in facts else ''
   # List of NFS options that will be set on all exports
   nfs_options = facts['vm_facts_nfs_options'] if 'vm_facts_nfs_options' in facts else []
-  # List of iSCSI initators, containing name, user and password (optionally mutual user and password)
-  iscsi_initiators = facts['vm_facts_iscsi_initiators'] if 'vm_facts_iscsi_initiators' in facts else []
-  # List of portals (IPs to give iSCSI access to)
-  portals = facts['vm_facts_iscsi_portals'] if 'vm_facts_iscsi_portals' in facts else []
   # List of hostnames that have missing VM vars. This lists will be printed in tasks for easier debugging
-  failed_names = {'size': [], 'org': [], 'initiator': []}
+  failed_names = {'size': [], 'org': []}
 
   # Create dicts and prefix if not already set
   if 'zfs_filesystems' not in facts:
@@ -127,16 +96,7 @@ def generateFacts(original_facts, storage_host):
 
       # Create iSCSI target config, if it doesn't already exist
       if not any(d['name'] == fs_prefix + org + '-' + host for d in facts['iscsi_targets']):
-        target = generateIscsiTarget(org + '-' + host, fs_prefix + org + '/' + host, portals)
-        # Add all initiators (with authentication) defined by the storage vars
-        for initiator in iscsi_initiators:
-          # If an initiator has no authentication defined, don't use it and mark the host as failed
-          if 'name' not in initiator or 'userid' not in initiator or 'password' not in initiator:
-            failed_names['initiator'].append(host)
-            continue
-          initiator_config = generateIscsiInitiator(initiator)
-          target['initiators'].append(initiator_config)
-
+        target = generateIscsiTarget(org + '-' + host, fs_prefix + org + '/' + host)
         facts['iscsi_targets'].append(target)
 
     # If the VM wants ZFS filesystems (the default), configure them and export them via NFS

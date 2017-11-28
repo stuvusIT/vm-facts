@@ -9,24 +9,14 @@ A Linux distribution.
 
 ## Role Variables (storage)
 
-| Name                                | Default / Mandatory | Description                                                                                                                                                                                                                                                                                                                 |
-|:------------------------------------|:-------------------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `vm_facts_variant`                  |      `storage`      | Either `storage` or `hypervisor`. This var is needed to set the correct facts according to the role.                                                                                                                                                                                                                        |
-| `vm_facts_zfs_parent_prefix`        |        `''`         | [only needed on `storage`] A prefix string for ZFS filesystems and ZVOLs, e.g. `tank/vms/`.                                                                                                                                                                                                                                 |
-| `vm_facts_nfs_options`              |        `[]`         | [only needed on `storage`] A list of NFS options, e.g. a default IP that is added to all exports. The option format must conform to the ZFS `sharenfs` attribute format.                                                                                                                                                    |
-| `vm_facts_iscsi_initiators`         |        `[]`         | [only needed on `storage`] List of iSCSI initiators allowed to connect to the generated iSCSI targets. See [Initiators](#initiators)..                                                                                                                                                                                      |
-| `vm_facts_iscsi_portals`            |        `[]`         | [only needed on `storage`] List of iSCSI portals (dicts that contain the `ip` and optionally the `port`) that are allowed to connect to iSCSI targets.                                                                                                                                                                      |
-| `vm_facts_default_root_reservation` |                     | [only needed on `storage`] If this var is set (e.g. to `10G` or any other allowed value for ZFS `reservation` attribute), root filesystems will use it as reservation by default. Otherwise, the size of the VM will be set as reservation. Independently, custom `reservation` may be set in the `vm.filesystems` variable |
-
-### Initiators
-
-| Name              | Default / Mandatory | Description                                              |
-|:------------------|:-------------------:|:---------------------------------------------------------|
-| `name`            | :heavy_check_mark:  | WWN of the initiator that should have access to all VMs. |
-| `userid`          | :heavy_check_mark:  | `userid` used to authenticate the initiator              |
-| `password`        | :heavy_check_mark:  | `password` used to authenticate the initiator            |
-| `userid_mutual`   |                     | `userid_mutual` used to authenticate the target          |
-| `password_mutual` |                     | `password_mutual` used to authenticate the target        |
+| Name                                |          Default / Mandatory          | Description                                                                                                                                                                                                                                                                                                                 |
+|:------------------------------------|:-------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `vm_facts_variant`                  |               `storage`               | Either `storage` or `hypervisor`. This var is needed to set the correct facts according to the role.                                                                                                                                                                                                                        |
+| `vm_facts_zfs_parent_prefix`        |                 `''`                  | [only needed on `storage`] A prefix string for ZFS filesystems and ZVOLs, e.g. `tank/vms/`.                                                                                                                                                                                                                                 |
+| `vm_facts_nfs_options`              |                 `[]`                  | [only needed on `storage`] A list of NFS options, e.g. a default IP that is added to all exports. The option format must conform to the ZFS `sharenfs` attribute format.                                                                                                                                                    |
+| `vm_facts_default_root_reservation` |                                       | [only needed on `storage`] If this var is set (e.g. to `10G` or any other allowed value for ZFS `reservation` attribute), root filesystems will use it as reservation by default. Otherwise, the size of the VM will be set as reservation. Independently, custom `reservation` may be set in the `vm.filesystems` variable |
+| `iscsi_default_initiators`          | :heavy_check_mark: (if iSCSI is used) | This var is explained in [iscsi-target](https://github.com/stuvusIT/iscsi-target#role-variables).                                                                                                                                                                                                                           |
+| `iscsi_default_portals`             | :heavy_check_mark: (if iSCSI is used) | This var is explained in [iscsi-target](https://github.com/stuvusIT/iscsi-target#role-variables).                                                                                                                                                                                                                           |
 
 ## Role Variables (hypervisor)
 | Name                           | Default / Mandatory | Description                                                                                                                  |
@@ -40,15 +30,15 @@ This table only lists the options used in this role, see [xen-vman](https://gith
 
 ### vm
 
-| Name           |                                                           Default / Mandatory                                                           | Description                                                                                                                                                                                                                                                                                 |
-|:---------------|:---------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|                |                                                                                                                                         |                                                                                                                                                                                                                                                                                             |
-| `org`          |                                                           :heavy_check_mark:                                                            | The organization this VM belongs to. Depending on this value, the filesystem or ZVOL will be placed at a different hierarchy level.                                                                                                                                                         |
-| `storage_type` |                                                              `filesystem`                                                               | Use `blockdevice` to create a ZVOL (ZFS virtual blockdevice of static size) and export it (as `{{ org }}-{{ name }}`) via iSCSI. Use `filesystem` (the default) to create a root filesystem `{{ name }}-root` and optionally other filesystems (see `filesystems`) and export them via NFS. |
-| `size`         |                                                           :heavy_check_mark:                                                            | Size of the root blockdevice or filesystem, e.g. `15G`. Depending on the `storage_type`, the size may be changed later easily or with a bit of work.                                                                                                                                        |
-| `filesystems`  | `[{'name': root, 'zfs_attributes':{'quota': {{size}}, 'reservation': {{size}}}, 'nfs_options': [no_root_squash,rw=@{{interface.ip}}]}]` | A list containing filesystem definitions, see [filesystems](#filesystems) - this var is only relevant if `storage_type=filesystem`.                                                                                                                                                         |
-| `interfaces`   |                                                           :heavy_check_mark:                                                            | Description of interfaces, see (`vm.interfaces`)[https://github.com/stuvusIT/xen_vman#vm-interfaces]. This var may also be on the root level of the VM host in question.                                                                                                                    |
-| `description`  |                                                           :heavy_check_mark:                                                            | Description of this VM's purpose. This var may also be on the root level of the VM host in question.                                                                                                                                                                                        |
+| Name           |                             Default / Mandatory                             | Description                                                                                                                                                                                                                                                                                           |                                                                                                                                     |
+|:---------------|:---------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------|
+|                |                                                                             |                                                                                                                                                                                                                                                                                                       |                                                                                                                                     |
+| `org`          |                             :heavy_check_mark:                              | The organization this VM belongs to. Depending on this value, the filesystem or ZVOL will be placed at a different hierarchy level.                                                                                                                                                                   |                                                                                                                                     |
+| `storage_type` |                                `filesystem`                                 | Use `blockdevice` to create a ZVOL (ZFS virtual blockdevice of static size) and export it (as `{{ org }}-{{ name }}`) via iSCSI. Use `filesystem` (the default) to create a root filesystem `{{ org }}/{{ name }}-root` and optionally other filesystems (see `filesystems`) and export them via NFS. |                                                                                                                                     |
+| `size`         |                             :heavy_check_mark:                              | Size of the root blockdevice or filesystem, e.g. `15G`. The size can only be changed later on if `storage_type`=`filesystem`. on.                                                                                                                                                                     |                                                                                                                                     |
+| `filesystems`  | `[{'name': root, 'zfs_attributes':{'quota': {{size}}, 'reservation': {{size | d(vm_facts_default_root_reservation)}}}, 'nfs_options': [no_root_squash,rw=@{{interface.ip}}]}]`                                                                                                                                                                                                      | A list containing filesystem definitions, see [filesystems](#filesystems) - this var is only relevant if `storage_type=filesystem`. |
+| `interfaces`   |                             :heavy_check_mark:                              | Description of interfaces, see (`vm.interfaces`)[https://github.com/stuvusIT/xen_vman#vm-interfaces]. This var may also be on the root level of the VM host in question.                                                                                                                              |                                                                                                                                     |
+| `description`  |                             :heavy_check_mark:                              | Description of this VM's purpose. This var may also be on the root level of the VM host in question.                                                                                                                                                                                                  |                                                                                                                                     |
 
 #### filesystems
 
@@ -70,18 +60,22 @@ This table only lists the options used in this role, see [xen-vman](https://gith
     - role: vm-facts
       vm_facts_facts_variant: storage
       vm_facts_zfs_parent_prefix: tank/vms/
-      vm_facts_iscsi_initiators:
+      iscsi_default_initiators:
        - name: 'iqn.1994-05.com.redhat:client1'
-         userid: myuser
-         password: mypassword
-         userid_mutual: sharedkey
-         password_mutual: sharedsecret
+         authentication:
+           userid: myuser
+           password: mypassword
+           userid_mutual: sharedkey
+           password_mutual: sharedsecret
+      iscsi_default_portals:
+       - ip: 192.168.10.6
       vm_facts_nfs_options:
        - rw=@192.168.10.2
       vm_facts_default_root_reservation: 10G
 ```
 
 ### Hypervisor
+
 ```yml
 - hosts: xenhypervisor
   roles:
@@ -122,6 +116,7 @@ Assuming the vm is named `web01`, these two filesystems will be created:
 | `tank/vms/misc/web01-data` | `quota=50G`, `sharenfs=rw=@192.168.10.2,rw=@192.168.10.52`                                                      |
 
 The hypervisor will have an additional entry in his `xen_vman_vms` list:
+
 ```yml
 xen_vman_vms:
  - description: VM to host static websites
