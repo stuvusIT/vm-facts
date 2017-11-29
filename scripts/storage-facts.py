@@ -84,7 +84,7 @@ def generateFacts(original_facts, storage_host):
       facts['zfs_filesystems'].append(org_fs)
 
     # Get storage type. filesystem is the default
-    storage_type = config['storage_type'] if 'storage_type' in config else 'filesystem'
+    storage_type = config['storage_type'] if 'storage_type' in config else facts['vm_facts_default_storage_type']
 
     # If the VM wants a ZVOL (virtual block device), create it and export it via iSCSI
     if storage_type == 'blockdevice':

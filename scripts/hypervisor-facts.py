@@ -43,8 +43,9 @@ def generateFacts(original_facts, hypervisor_host):
     if any((d['name'] == host and 'org' in config and d['org'] == config['org']) for d in facts['xen_vman_vms']):
       continue
 
+    storage_type = config['storage_type'] if 'storage_type' in config else facts['vm_facts_default_storage_type']
     # Set precise connection type for xen, depending on general storage_type
-    if 'storage_type' in config and config['storage_type'] == 'blockdevice':
+    if storage_type == 'blockdevice':
       config['storage_type'] = 'iscsi'
     else:
       config['storage_type'] = 'nfs'
