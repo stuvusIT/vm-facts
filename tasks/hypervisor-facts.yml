@@ -1,0 +1,39 @@
+---
+- name: Create temporary hostvars file
+  tempfile:
+    state: file
+    suffix: json
+  register: tempfile
+  changed_when: False
+
+- name: Write hostvars to file
+  copy:
+    content: "{{ hostvars }}"
+    dest: "{{ tempfile.path }}"
+  changed_when: False
+
+- name: Run hypervisor-facts script
+  script: "scripts/hypervisor-facts.py {{ ansible_hostname }} {{ tempfile.path }}"
+  register: hypervisor_factgen
+  changed_when: False
+
+- name: Set hypervisor facts
+  set_fact:
+    xen_vman_vms: "{{ (hypervisor_factgen.stdout|from_json).new_hostvars.xen_vman_vms }}"
+
+- name: Remove temporary hostvars file
+  file:
+    path: tempfile.path
+    state: absent
+
+- name: "There are {{ (hypervisor_factgen.stdout|from_json).failed_hosts.interfaces|length }} VMs without defined interfaces"
+  fail:
+    msg: "{{ item }}"
+  with_items: "{{ (hypervisor_factgen.stdout|from_json).failed_hosts.interfaces }}"
+  failed_when: (hypervisor_factgen.stdout|from_json).failed_hosts.interfaces|length>0
+
+- name: "There are {{ (hypervisor_factgen.stdout|from_json).failed_hosts.description|length }} VMs without a description"
+  fail:
+    msg: "{{ item }}"
+  with_items: "{{ (hypervisor_factgen.stdout|from_json).failed_hosts.description }}"
+  failed_when: (hypervisor_factgen.stdout|from_json).failed_hosts.description|length>0

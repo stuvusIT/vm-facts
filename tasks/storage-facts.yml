@@ -1,46 +1,42 @@
 ---
+- name: Create temporary hostvars file
+  tempfile:
+    state: file
+    suffix: json
+  register: tempfile
+  changed_when: False
+
 - name: Write hostvars to file
   copy:
     content: "{{ hostvars }}"
-    dest: "/tmp/storage_hostvars"
-  changed_when: false
+    dest: "{{ tempfile.path }}"
+  changed_when: False
 
 - name: Run storage-facts script
-  script: "scripts/storage-facts.py {{ ansible_hostname }} /tmp/storage_hostvars"
+  script: "scripts/storage-facts.py {{ ansible_hostname }} {{ tempfile.path }}"
   register: storage_factgen
-  changed_when: false
+  changed_when: False
 
 - name: Set storage facts
   set_fact:
-    zfs_filesystems: "{{(storage_factgen.stdout|from_json).new_hostvars.zfs_filesystems}}"
-    zvols: "{{(storage_factgen.stdout|from_json).new_hostvars.zvols}}"
-    iscsi_targets: "{{(storage_factgen.stdout|from_json).new_hostvars.iscsi_targets}}"
-    iscsi_disk_path_prefix: "{{(storage_factgen.stdout|from_json).new_hostvars.iscsi_disk_path_prefix}}"
+    zfs_filesystems: "{{ (storage_factgen.stdout|from_json).new_hostvars.zfs_filesystems }}"
+    zvols: "{{ (storage_factgen.stdout|from_json).new_hostvars.zvols }}"
+    iscsi_targets: "{{ (storage_factgen.stdout|from_json).new_hostvars.iscsi_targets }}"
+    iscsi_disk_path_prefix: "{{ (storage_factgen.stdout|from_json).new_hostvars.iscsi_disk_path_prefix }}"
 
-- name: "There are {{(storage_factgen.stdout|from_json).failed_hosts.size|length}} VMs without size var"
+- name: Remove temporary hostvars file
+  file:
+    path: tempfile.path
+    state: absent
+
+- name: "There are {{ (storage_factgen.stdout|from_json).failed_hosts.size|length }} VMs without size var"
   fail:
-    msg: "{{item}}"
-  with_items: "{{(storage_factgen.stdout|from_json).failed_hosts.size}}"
-  failed_when: false
-  changed_when: (storage_factgen.stdout|from_json).failed_hosts.size|length>0
+    msg: "{{ item }}"
+  with_items: "{{ (storage_factgen.stdout|from_json).failed_hosts.size }}"
+  failed_when: (storage_factgen.stdout|from_json).failed_hosts.size|length>0
 
-- name: "There are {{(storage_factgen.stdout|from_json).failed_hosts.org|length}} VMs without organization var"
+- name: "There are {{ (storage_factgen.stdout|from_json).failed_hosts.org|length }} VMs without organization var"
   fail: 
-    msg: "{{item}}"
-  with_items: "{{(storage_factgen.stdout|from_json).failed_hosts.org}}"
-  failed_when: false
-  changed_when: (storage_factgen.stdout|from_json).failed_hosts.org|length>0
-
-- name: "There are {{(storage_factgen.stdout|from_json).failed_hosts.root_type|length}} VMs with illegal root_type"
-  fail:
-    msg: "{{item}}"
-  with_items: "{{(storage_factgen.stdout|from_json).failed_hosts.root_type}}"
-  failed_when: false
-  changed_when: (storage_factgen.stdout|from_json).failed_hosts.root_type|length>0
-
-- name: "There are {{(storage_factgen.stdout|from_json).failed_hosts.initiator|length}} VMs without initiator authentication"
-  fail:
-    msg: "{{item}}"
-  with_items: "{{(storage_factgen.stdout|from_json).failed_hosts.initiator}}"
-  failed_when: false
-  changed_when: (storage_factgen.stdout|from_json).failed_hosts.initiator|length>0
+    msg: "{{ item }}"
+  with_items: "{{ (storage_factgen.stdout|from_json).failed_hosts.org }}"
+  failed_when: (storage_factgen.stdout|from_json).failed_hosts.org|length>0
