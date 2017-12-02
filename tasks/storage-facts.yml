@@ -24,6 +24,11 @@
     iscsi_targets: "{{ (storage_factgen.stdout|from_json).new_hostvars.iscsi_targets }}"
     iscsi_disk_path_prefix: "{{ (storage_factgen.stdout|from_json).new_hostvars.iscsi_disk_path_prefix }}"
 
+- name: Remove temporary hostvars file
+  file:
+    path: tempfile.path
+    state: absent
+
 - name: "There are {{ (storage_factgen.stdout|from_json).failed_hosts.size|length }} VMs without size var"
   fail:
     msg: "{{ item }}"
