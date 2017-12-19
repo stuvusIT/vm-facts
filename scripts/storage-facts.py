@@ -42,10 +42,14 @@ def generateIscsiTarget(name, path):
 
 
 def generateFacts(original_facts, storage_host):
-  # facts are the hostvars of the current storage host
+  # facts are the hostvars of the current host
   facts = original_facts[storage_host] if storage_host in original_facts else {}
+  vm_facts_variant = facts['vm_facts_variant'] if 'vm_facts_variant' in facts else 'storage'
   # ZFS filesystem prefix to be added in front of every generated ZFS filesystem
-  fs_prefix = facts['vm_facts_zfs_parent_prefix'] if 'vm_facts_zfs_parent_prefix' in facts else ''
+  fs_prefix = facts['vm_facts_storage_zfs_parent_prefix'] if 'vm_facts_storage_zfs_parent_prefix' in facts else 'tank/'
+  # ZFS filesystem prefix on the backup host (where filesystems will be sent to using zfs-snap-manager)
+  backup_prefix = facts[
+    'vm_facts_backup_zfs_parent_prefix'] if 'vm_facts_backup_zfs_parent_prefix' in facts else 'tank/'
   # List of NFS options that will be set on all exports
   nfs_options = facts['vm_facts_nfs_options'] if 'vm_facts_nfs_options' in facts else []
   # List of hostnames that have missing VM vars. This lists will be printed in tasks for easier debugging
@@ -92,10 +96,13 @@ def generateFacts(original_facts, storage_host):
       if not any(d['name'] == fs_prefix + org + '/' + host for d in facts['zvols']):
         # volsize must be set at creation and cannot be changed later on
         zvol = {'name': fs_prefix + org + '/' + host, 'attributes': {'volsize': config['size']}}
+        if vm_facts_variant == 'storage':
+          zvol['snapshots'] = {'replicate_target': backup_prefix + org + '/' + host}
         facts['zvols'].append(zvol)
 
       # Create iSCSI target config, if it doesn't already exist
-      if not any(d['name'] == fs_prefix + org + '-' + host for d in facts['iscsi_targets']):
+      if vm_facts_variant == 'storage' and not any(d['name'] == fs_prefix + org + '-' + host
+                                                   for d in facts['iscsi_targets']):
         target = generateIscsiTarget(org + '-' + host, fs_prefix + org + '/' + host)
         facts['iscsi_targets'].append(target)
 
@@ -122,15 +129,20 @@ def generateFacts(original_facts, storage_host):
         nfs_options_to_set = fs['nfs_options'] + nfs_options if 'nfs_options' in fs else default_nfs_options
         # Set sizes and no_root_squash if it is the root filesystem
         if fs['name'] == 'root':
-          attributes['quota'] = config['size']
+          if vm_facts_variant == 'storage':
+            attributes['quota'] = config['size']
           if 'reservation' not in attributes:
             attributes['reservation'] = facts[
               'vm_facts_default_root_reservation'] if 'vm_facts_default_root_reservation' in facts else config['size']
           nfs_options_to_set.append('no_root_squash')
+        if vm_facts_variant == 'backup':
+          nfs_options_to_set = []
         attributes['sharenfs'] = 'off' if not nfs_options_to_set else ','.join(sorted(set(nfs_options_to_set)))
         # Create and add root and data filesystems if necessary
         if fs_prefix + org + '/' + host + '-' + fs['name'] not in facts['zfs_filesystems']:
           zfs_fs = {'name': fs_prefix + org + '/' + host + '-' + fs['name'], 'attributes': attributes}
+          if vm_facts_variant == 'storage':
+            zfs_fs['snapshots'] = {'replicate_target': backup_prefix + org + '/' + host + '-' + fs['name']}
           facts['zfs_filesystems'].append(zfs_fs)
 
   facts['zfs_filesystems'] = sorted(facts['zfs_filesystems'], key=lambda k: k['name'])
