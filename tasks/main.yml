@@ -1,6 +1,6 @@
 ---
 - include_tasks: storage-facts.yml
-  when: vm_facts_variant == 'storage'
+  when: vm_facts_variant == 'storage' or vm_facts_variant == 'backup'
 
 - include_tasks: hypervisor-facts.yml
   when: vm_facts_variant == 'hypervisor'
