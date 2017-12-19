@@ -97,7 +97,7 @@ def generateFacts(original_facts, storage_host):
         # volsize must be set at creation and cannot be changed later on
         zvol = {'name': fs_prefix + org + '/' + host, 'attributes': {'volsize': config['size']}}
         if vm_facts_variant == 'storage':
-          zvol['snapshots'] = {'repilcate_target': backup_prefix + org + '/' + host}
+          zvol['snapshots'] = {'replicate_target': backup_prefix + org + '/' + host}
         facts['zvols'].append(zvol)
 
       # Create iSCSI target config, if it doesn't already exist
