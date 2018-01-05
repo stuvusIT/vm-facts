@@ -110,11 +110,9 @@ def generateFacts(original_facts, storage_host):
     else:
       # Default NFS options if no overrides are specified for a filesystem
       default_nfs_options = list(nfs_options)
-      # Add every existing interface ip as rw export
-      if 'interfaces' in original_facts[host]:
-        for interface in original_facts[host]['interfaces']:
-          if 'ip' in interface:
-            default_nfs_options.append("rw=@" + interface['ip'])
+      # Add VM IP as rw export
+      if 'ansible_host' in original_facts[host]:
+        default_nfs_options.append("rw=@" + original_facts[host]['ansible_host'])
 
       filesystems = config['filesystems'] if 'filesystems' in config else []
       # Add root filesystem if it has not been defined by hand
