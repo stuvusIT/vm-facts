@@ -51,11 +51,11 @@ This table only lists the options used in this role, see [xen-vman](https://gith
 
 `vm.filesystems` is a list of dicts that describe filesystems for one VM. A `root` filesystem will always be created, with `quota` set to the VM `size` value, `reservation` set to the global default value or also the VM `size` (see above) and the NFS option `no_root_squash` added. On hosts with `vm_facts_variant`=`backup`, no NFS options will be set by default. The `filesystems` var is only respected if `storage_type` is `filesystem`.
 
-| Name             |   Default / Mandatory    | Description                                                                                                                                                                                                                                                                                                                                         |
-|:-----------------|:------------------------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `name`           |    :heavy_check_mark:    | `name`-suffix of the filesystem. The final name consists of the vm name and the filesystem name, delimited by a dash.                                                                                                                                                                                                                               |
-| `zfs_attributes` |           `{}`           | A dict containing any ZFS attributes that shall be set for this filesystem. It is recommended to define a `quota`, though this may also be done in the default ZFS attributes on the actual [zfs-storage](https://github.com/stuvusIT/zfs-storage/) server.                                                                                         |
-| `nfs_options`    | `[rw=@{{interface.ip}}]` | A list of NFS options that are set for this NFS export. The default is an rw access for every IP defined in (`vm.interfaces`)[https://github.com/stuvusIT/xen_vman#vm-interfaces]. The options have to conform to the ZFS `sharenfs` attribute format. The options defined in `vm_nfs_options` will be set in addition to this value in every case. |
+| Name             |   Default / Mandatory    | Description                                                                                                                                                                                                                                                                                                                                    |
+|:-----------------|:------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `name`           |    :heavy_check_mark:    | `name`-suffix of the filesystem. The final name consists of the vm name and the filesystem name, delimited by a dash.                                                                                                                                                                                                                          |
+| `zfs_attributes` |           `{}`           | A dict containing any ZFS attributes that shall be set for this filesystem. It is recommended to define a `quota`, though this may also be done in the default ZFS attributes on the actual [zfs-storage](https://github.com/stuvusIT/zfs-storage/) server.                                                                                    |
+| `nfs_options`    | `[rw=@{{ansible_host}}]` | A list of NFS options that are set for this NFS export. The default is one read-write NFS export for the IP defined in (`ansible_host`) in the hostvars of the respective VM. The options have to conform to the ZFS `sharenfs` attribute format. The options defined in `vm_nfs_options` will be set in addition to this value in every case. |
 
 ## Example Playbook
 
@@ -111,16 +111,17 @@ vm:
      ip:  '192.168.10.52'
    - mac: 'AA:BB:CC:FE:19:AB'
      ip:  '192.168.100.52'
+ansible_host: 192.168.10.52
 ```
 
 ### Result
 
 Assuming the vm is named `web01`, these two filesystems will be created:
 
-|            Name            | ZFS attributes                                                                                                  |
-|:--------------------------:|:----------------------------------------------------------------------------------------------------------------|
-| `tank/vms/misc/web01-root` | `quota=15G`, `reservation=10G`, `sharenfs=no_root_squash,rw=@192.168.10.2,rw=@192.168.10.52,rw=@192.168.100.52` |
-| `tank/vms/misc/web01-data` | `quota=50G`, `sharenfs=rw=@192.168.10.2,rw=@192.168.10.52`                                                      |
+|            Name            | ZFS attributes                                                                               |
+|:--------------------------:|:---------------------------------------------------------------------------------------------|
+| `tank/vms/misc/web01-root` | `quota=15G`, `reservation=10G`, `sharenfs=no_root_squash,rw=@192.168.10.2,rw=@192.168.10.52` |
+| `tank/vms/misc/web01-data` | `quota=50G`, `sharenfs=rw=@192.168.10.2,rw=@192.168.10.52`                                   |
 
 The hypervisor will have an additional entry in his `xen_vman_vms` list:
 
