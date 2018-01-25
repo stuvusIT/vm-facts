@@ -1,3 +1,0 @@
----
-vm_facts_variant: storage
-vm_facts_default_storage_type: filesystem

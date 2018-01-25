@@ -9,11 +9,16 @@ A Linux distribution.
 
 ## Role Variables
 
-| Name               | Default / Mandatory | Description                                                                                                    |
-|:-------------------|:-------------------:|:---------------------------------------------------------------------------------------------------------------|
-| `vm_facts_variant` |      `storage`      | Either `storage`, `hypervisor` or `backup`. This var is needed to set the correct facts according to the role. |
+| Name                                 | Default / Mandatory | Description                                                               |
+|:-------------------------------------|:-------------------:|:--------------------------------------------------------------------------|
+| `vm_facts_generate_storage_facts`    |       `False`       | Flag to activate fact generation for storage variables (ZFS, NFS, iSCSI). |
+| `vm_facts_generate_backup_facts`     |       `False`       | Flag to activate fact generation for storage variables (ZFS).             |
+| `vm_facts_generate_hypervisor_facts` |       `False`       | Flag to activate fact generation for hypervisor variables (Xen).          |
 
-## Role Variables (storage or backup)
+`vm_facts_generate_storage_facts` and `vm_facts_generate_backup_facts` are mutually exclusive with `vm_facts_generate_storage_facts` being prioritized.
+
+
+## Role Variables (needed for storage or backup)
 
 | Name                                 |          Default / Mandatory          | Description                                                                                                                                                                                                                                                                                                                                                      |
 |:-------------------------------------|:-------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

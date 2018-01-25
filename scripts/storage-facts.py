@@ -44,7 +44,12 @@ def generateIscsiTarget(name, path):
 def generateFacts(original_facts, storage_host):
   # facts are the hostvars of the current host
   facts = original_facts[storage_host] if storage_host in original_facts else {}
-  vm_facts_variant = facts['vm_facts_variant'] if 'vm_facts_variant' in facts else 'storage'
+  if 'vm_facts_generate_storage_facts' in facts and facts['vm_facts_generate_storage_facts']:
+    vm_facts_variant = 'storage'
+  elif 'vm_facts_generate_backup_facts' in facts and facts['vm_facts_generate_backup_facts']:
+    vm_facts_variant = 'backup'
+  else:
+    vm_facts_variant = 'illegal'
   # ZFS filesystem prefix to be added in front of every generated ZFS filesystem
   fs_prefix = facts['vm_facts_storage_zfs_parent_prefix'] if 'vm_facts_storage_zfs_parent_prefix' in facts else 'tank/'
   # ZFS filesystem prefix on the backup host (where filesystems will be sent to using zfs-snap-manager)
@@ -67,6 +72,8 @@ def generateFacts(original_facts, storage_host):
 
   # Traverse every host defined in hostvars
   for host in original_facts.keys():
+    if vm_facts_variant == 'illegal':
+      break
     if 'vm' not in original_facts[host]:
       continue
     # config is the vm dict of a specific VM host
@@ -88,7 +95,12 @@ def generateFacts(original_facts, storage_host):
       facts['zfs_filesystems'].append(org_fs)
 
     # Get storage type. filesystem is the default
-    storage_type = config['storage_type'] if 'storage_type' in config else facts['vm_facts_default_storage_type']
+    if 'storage_type' in config:
+      storage_type = config['storage_type']
+    elif 'vm_facts_default_storage_type' in facts:
+      storage_type = facts['vm_facts_default_storage_type']
+    else:
+      storage_type = 'filesystem'
 
     # If the VM wants a ZVOL (virtual block device), create it and export it via iSCSI
     if storage_type == 'blockdevice':
