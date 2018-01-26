@@ -76,6 +76,10 @@ def generateFacts(original_facts, storage_host):
       break
     if 'vm' not in original_facts[host]:
       continue
+    if 'storage_host' in original_facts[host] and original_facts[host][storage_host] != storage_host:
+      continue
+    if storage_host != facts['vm_facts_default_storage_host']:
+      continue
     # config is the vm dict of a specific VM host
     config = original_facts[host]['vm']
 

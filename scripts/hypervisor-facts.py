@@ -35,7 +35,10 @@ def generateFacts(original_facts, hypervisor_host):
     # Ignore physical hosts
     if 'vm' not in original_facts[host]:
       continue
-
+    if 'hypervisor_host' in original_facts[host] and original_facts[host][hypervisor_host] != hypervisor_host:
+      continue
+    if hypervisor_host != facts['vm_facts_default_hypervisor_host']:
+      continue
     # config is the vm dict of a specific VM host
     config = original_facts[host]['vm']
     config['name'] = host
