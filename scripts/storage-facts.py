@@ -59,6 +59,8 @@ def generateFacts(original_facts, storage_host):
   nfs_options = facts['vm_facts_nfs_options'] if 'vm_facts_nfs_options' in facts else []
   # List of hostnames that have missing VM vars. This lists will be printed in tasks for easier debugging
   failed_names = {'size': [], 'org': []}
+  default_storage = facts['vm_facts_default_storage_host']
+  default_hypervisor = facts['vm_facts_default_hypervisor_host']
 
   # Create dicts and prefix if not already set
   if 'zfs_filesystems' not in facts:
@@ -76,13 +78,12 @@ def generateFacts(original_facts, storage_host):
       break
     if 'vm' not in original_facts[host]:
       continue
-    if 'storage_host' in original_facts[host] and original_facts[host][storage_host] != storage_host:
-      continue
-    if storage_host != facts['vm_facts_default_storage_host']:
+    storage_for_vm = original_facts[host]['storage_host'] if original_facts[host]['storage_host'] is defined else default_storage
+    hypervisor_for_vm = original_facts[host]['hypervisor_host'] if original_facts[host]['hypervisor_host'] is defined else default_hypervisor
+    if storage_host != storage_for_vm:
       continue
     # config is the vm dict of a specific VM host
     config = original_facts[host]['vm']
-
     # Don't create this vm if org or size are not set
     if 'org' in config:
       org = config['org']
@@ -141,6 +142,9 @@ def generateFacts(original_facts, storage_host):
         attributes = fs['zfs_attributes'] if 'zfs_attributes' in fs else {}
         # Use override NFS options if they exist, otherwise use the default
         nfs_options_to_set = fs['nfs_options'] + nfs_options if 'nfs_options' in fs else default_nfs_options
+        nfs_options_rw_hypervisor = "rw=@{}".format(original_facts[hypervisor_for_vm]['ansible_host'])
+        if nfs_options_rw_hypervisor not in nfs_options_to_set
+          nfs_options_to_set.append(nfs_options_rw_hypervisor)
         # Set sizes and no_root_squash if it is the root filesystem
         if fs['name'] == 'root':
           if vm_facts_variant == 'storage':
