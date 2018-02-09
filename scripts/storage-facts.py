@@ -51,17 +51,21 @@ def generateFacts(original_facts, storage_host):
   else:
     vm_facts_variant = 'illegal'
   # ZFS filesystem prefix to be added in front of every generated ZFS filesystem
-  fs_prefix = facts['vm_facts_storage_zfs_parent_prefix'] if 'vm_facts_storage_zfs_parent_prefix' in facts else 'tank/'
+  pool_prefix = facts[
+    'vm_facts_storage_zfs_parent_prefix'] if 'vm_facts_storage_zfs_parent_prefix' in facts else 'tank/'
+  fs_prefix = pool_prefix
   # ZFS filesystem prefix on the backup host (where filesystems will be sent to using zfs-snap-manager)
   backup_prefix = facts[
     'vm_facts_backup_zfs_parent_prefix'] if 'vm_facts_backup_zfs_parent_prefix' in facts else 'tank/'
   # List of NFS options that will be set on all exports
   nfs_options = facts['vm_facts_nfs_options'] if 'vm_facts_nfs_options' in facts else []
-  # List of hostnames that have missing VM vars. This lists will be printed in tasks for easier debugging
-  failed_names = {'size': [], 'org': []}
+  # default hostnames, to use when a VM doesn't define a hypervisor/storage/backup host
   default_storage = facts['vm_facts_default_storage_host']
   default_hypervisor = facts['vm_facts_default_hypervisor_host']
+  default_backup = facts['vm_facts_default_backup_host']
 
+  # List of hostnames that have missing VM vars. This lists will be printed in tasks for easier debugging
+  failed_names = {'size': [], 'org': []}
   # Create dicts and prefix if not already set
   if 'zfs_filesystems' not in facts:
     facts['zfs_filesystems'] = []
@@ -74,14 +78,26 @@ def generateFacts(original_facts, storage_host):
 
   # Traverse every host defined in hostvars
   for host in original_facts.keys():
+    # Skip illegal vm-fact execution and hardware hosts
     if vm_facts_variant == 'illegal':
       break
     if 'vm' not in original_facts[host]:
       continue
-    storage_for_vm = original_facts[host]['storage_host'] if original_facts[host]['storage_host'] is defined else default_storage
-    hypervisor_for_vm = original_facts[host]['hypervisor_host'] if original_facts[host]['hypervisor_host'] is defined else default_hypervisor
-    if storage_host != storage_for_vm:
+    # Determine the storage, hypervisor and backup host to be used for this VM
+    storage_for_vm = original_facts[host]['vm']['storage_host'] if 'storage_host' in original_facts[host][
+      'vm'] else default_storage
+    hypervisor_for_vm = original_facts[host]['vm']['hypervisor_host'] if 'hypervisor_host' in original_facts[host][
+      'vm'] else default_hypervisor
+    backup_for_vm = original_facts[host]['vm']['backup_host'] if 'backup_host' in original_facts[host][
+      'vm'] else default_backup
+    # Skip VMs that should not be saved/backed up on the current host
+    if vm_facts_variant == 'storage' and storage_host != storage_for_vm:
       continue
+    elif vm_facts_variant == 'backup':
+      fs_prefix = pool_prefix + storage_for_vm + '/vms/'
+      if storage_host != backup_for_vm:
+        continue
+
     # config is the vm dict of a specific VM host
     config = original_facts[host]['vm']
     # Don't create this vm if org or size are not set
@@ -114,7 +130,7 @@ def generateFacts(original_facts, storage_host):
         # volsize must be set at creation and cannot be changed later on
         zvol = {'name': fs_prefix + org + '/' + host, 'attributes': {'volsize': config['size']}}
         if vm_facts_variant == 'storage':
-          zvol['snapshots'] = {'replicate_target': backup_prefix + org + '/' + host}
+          zvol['snapshots'] = {'replicate_target': backup_prefix + storage_for_vm + '/vms/' + org + '/' + host}
         facts['zvols'].append(zvol)
 
       # Create iSCSI target config, if it doesn't already exist
@@ -128,8 +144,12 @@ def generateFacts(original_facts, storage_host):
       # Default NFS options if no overrides are specified for a filesystem
       default_nfs_options = list(nfs_options)
       # Add VM IP as rw export
-      if 'ansible_host' in original_facts[host]:
+      if vm_facts_variant == 'storage' and 'ansible_host' in original_facts[host]:
         default_nfs_options.append("rw=@" + original_facts[host]['ansible_host'])
+      nfs_options_rw_hypervisor = "rw=@{}".format(original_facts[hypervisor_for_vm]['ansible_host'])
+      # Add the IP of the used hypervisor as NFS rw export
+      if vm_facts_variant == 'storage' and nfs_options_rw_hypervisor not in default_nfs_options:
+        default_nfs_options.append(nfs_options_rw_hypervisor)
 
       filesystems = config['filesystems'] if 'filesystems' in config else []
       # Add root filesystem if it has not been defined by hand
@@ -142,25 +162,23 @@ def generateFacts(original_facts, storage_host):
         attributes = fs['zfs_attributes'] if 'zfs_attributes' in fs else {}
         # Use override NFS options if they exist, otherwise use the default
         nfs_options_to_set = fs['nfs_options'] + nfs_options if 'nfs_options' in fs else default_nfs_options
-        nfs_options_rw_hypervisor = "rw=@{}".format(original_facts[hypervisor_for_vm]['ansible_host'])
-        if nfs_options_rw_hypervisor not in nfs_options_to_set
-          nfs_options_to_set.append(nfs_options_rw_hypervisor)
         # Set sizes and no_root_squash if it is the root filesystem
         if fs['name'] == 'root':
           if vm_facts_variant == 'storage':
             attributes['quota'] = config['size']
+            nfs_options_to_set.append('no_root_squash')
           if 'reservation' not in attributes:
             attributes['reservation'] = facts[
               'vm_facts_default_root_reservation'] if 'vm_facts_default_root_reservation' in facts else config['size']
-          nfs_options_to_set.append('no_root_squash')
-        if vm_facts_variant == 'backup':
-          nfs_options_to_set = []
+        # Don't share via NFS on backup hosts
         attributes['sharenfs'] = 'off' if not nfs_options_to_set else ','.join(sorted(set(nfs_options_to_set)))
         # Create and add root and data filesystems if necessary
         if fs_prefix + org + '/' + host + '-' + fs['name'] not in facts['zfs_filesystems']:
           zfs_fs = {'name': fs_prefix + org + '/' + host + '-' + fs['name'], 'attributes': attributes}
           if vm_facts_variant == 'storage':
-            zfs_fs['snapshots'] = {'replicate_target': backup_prefix + org + '/' + host + '-' + fs['name']}
+            zfs_fs['snapshots'] = {
+              'replicate_target': backup_prefix + storage_for_vm + '/vms/' + org + '/' + host + '-' + fs['name']
+            }
           facts['zfs_filesystems'].append(zfs_fs)
 
   facts['zfs_filesystems'] = sorted(facts['zfs_filesystems'], key=lambda k: k['name'])
