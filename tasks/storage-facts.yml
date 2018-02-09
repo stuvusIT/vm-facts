@@ -1,12 +1,12 @@
 ---
-- name: Create temporary hostvars file
+- name: Create temporary storage hostvars file
   tempfile:
     state: file
     suffix: json
   register: tempfile
   changed_when: False
 
-- name: Write hostvars to file
+- name: Write storage hostvars to file
   copy:
     content: "{{ hostvars }}"
     dest: "{{ tempfile.path }}"
@@ -24,7 +24,7 @@
     iscsi_targets: "{{ (storage_factgen.stdout|from_json).new_hostvars.iscsi_targets }}"
     iscsi_disk_path_prefix: "{{ (storage_factgen.stdout|from_json).new_hostvars.iscsi_disk_path_prefix }}"
 
-- name: Remove temporary hostvars file
+- name: Remove temporary storage hostvars file
   file:
     path: tempfile.path
     state: absent
