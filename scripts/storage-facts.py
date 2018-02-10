@@ -18,23 +18,6 @@ def main():
     p.print_help()
 
 
-def generateOrganizationFilesystem(org_name):
-  """Generates the configuration for a ZFS filesystem with the specified name. Snapshots are disabled and sane attributes for parent filesystems are set"""
-  org_fs = {
-    'name': org_name,
-    'attributes': {
-      'exec': 'off',
-      'setuid': 'off',
-      'canmount': 'off',
-      'recordsize': '1M'
-    },
-    'snapshots': {
-      'snapshot': False  #don't snapshot the organizational filesystem, nothing lies there directly
-    }
-  }
-  return org_fs
-
-
 def generateIscsiTarget(name, path):
   """Generates the configuration for an iSCSI target"""
   target = {'name': name, 'disks': {'name': name, 'path': path}}
@@ -109,11 +92,6 @@ def generateFacts(original_facts, storage_host):
     else:
       failed_names['org'].append(host)
       continue
-
-    # Create organization filesystem if it doesn't already exist
-    if not any(d['name'] == fs_prefix + org for d in facts['zfs_filesystems']):
-      org_fs = generateOrganizationFilesystem(fs_prefix + org)
-      facts['zfs_filesystems'].append(org_fs)
 
     # Get storage type. filesystem is the default
     if 'storage_type' in config:
