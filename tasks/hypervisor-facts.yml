@@ -1,12 +1,12 @@
 ---
-- name: Create temporary hostvars file
+- name: Create temporary hypervisor hostvars file
   tempfile:
     state: file
     suffix: json
   register: tempfile
   changed_when: False
 
-- name: Write hostvars to file
+- name: Write hypervisor hostvars to file
   copy:
     content: "{{ hostvars }}"
     dest: "{{ tempfile.path }}"
@@ -21,7 +21,7 @@
   set_fact:
     xen_vman_vms: "{{ (hypervisor_factgen.stdout|from_json).new_hostvars.xen_vman_vms }}"
 
-- name: Remove temporary hostvars file
+- name: Remove temporary hypervisor hostvars file
   file:
     path: tempfile.path
     state: absent

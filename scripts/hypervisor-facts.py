@@ -25,6 +25,7 @@ def generateFacts(original_facts, hypervisor_host):
   cidr_suffix = facts['vm_facts_default_cidr_suffix'] if 'vm_facts_default_cidr_suffix' in facts else '/24'
   # List of hostnames that have missing VM vars. This lists will be printed in tasks for easier debugging
   failed_names = {'interfaces': [], 'description': []}
+  default_hypervisor = facts['vm_facts_default_hypervisor_host']
 
   # Create list if it doesn't already exist
   if 'xen_vman_vms' not in facts:
@@ -35,7 +36,10 @@ def generateFacts(original_facts, hypervisor_host):
     # Ignore physical hosts
     if 'vm' not in original_facts[host]:
       continue
-
+    hypervisor_for_vm = original_facts[host]['vm']['hypervisor_host'] if 'hypervisor_host' in original_facts[host][
+      'vm'] else default_hypervisor
+    if hypervisor_host != hypervisor_for_vm:
+      continue
     # config is the vm dict of a specific VM host
     config = original_facts[host]['vm']
     config['name'] = host
