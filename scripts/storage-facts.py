@@ -109,6 +109,9 @@ def generateFacts(original_facts, storage_host):
         zvol = {'name': fs_prefix + org + '/' + host, 'attributes': {'volsize': config['size']}}
         if vm_facts_variant == 'storage':
           zvol['snapshots'] = {'replicate_target': backup_prefix + storage_for_vm + '/vms/' + org + '/' + host}
+        else:  # Backup variant
+          zvol['attributes']['readonly'] = 'on'
+
         facts['zvols'].append(zvol)
 
       # Create iSCSI target config, if it doesn't already exist
@@ -150,6 +153,9 @@ def generateFacts(original_facts, storage_host):
               'vm_facts_default_root_reservation'] if 'vm_facts_default_root_reservation' in facts else config['size']
         # Don't share via NFS on backup hosts
         attributes['sharenfs'] = 'off' if not nfs_options_to_set else ','.join(sorted(set(nfs_options_to_set)))
+        # Set to readonly if on backup
+        if vm_facts_variant == 'backup':
+          attributes['readonly'] = 'on'
         # Create and add root and data filesystems if necessary
         if fs_prefix + org + '/' + host + '-' + fs['name'] not in facts['zfs_filesystems']:
           zfs_fs = {'name': fs_prefix + org + '/' + host + '-' + fs['name'], 'attributes': attributes}
