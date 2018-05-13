@@ -59,6 +59,9 @@ def generateFacts(original_facts, storage_host):
   if 'iscsi_disk_path_prefix' not in facts:
     facts['iscsi_disk_path_prefix'] = '/dev/zvol/'
 
+  default_local_snapshots = ['hourly']
+  available_local_snapshots = ['frequent', 'hourly', 'daily', 'weekly', 'monthly']
+
   # Traverse every host defined in hostvars
   for host in original_facts.keys():
     # Skip illegal vm-fact execution and hardware hosts
@@ -104,20 +107,27 @@ def generateFacts(original_facts, storage_host):
     # If the VM wants a ZVOL (virtual block device), create it and export it via iSCSI
     if storage_type == 'blockdevice':
       # Create ZVOL if it doesn't already exist
-      if not any(d['name'] == fs_prefix + org + '/' + host for d in facts['zvols']):
+      fs_name = fs_prefix + org + '/' + host
+      if not any(d['name'] == fs_name for d in facts['zvols']):
         # volsize must be set at creation and cannot be changed later on
-        zvol = {'name': fs_prefix + org + '/' + host, 'attributes': {'volsize': config['size']}}
+        zvol = {'name': fs_name, 'attributes': {'volsize': config['size']}}
         if vm_facts_variant == 'storage':
           zvol['snapshots'] = {'replicate_target': backup_prefix + storage_for_vm + '/vms/' + org + '/' + host}
         else:  # Backup variant
           zvol['attributes']['readonly'] = 'on'
 
-        facts['zvols'].append(zvol)
+        # Create configuration for zfs-auto-snapshot script
+        if vm_facts_variant == 'storage' and ('local_snapshots' not in config and len(default_local_snapshots) > 0
+                                              or len(config['local_snapshots']) > 0):
+          label_list = config['local_snapshots'] if 'local_snapshots' in config else default_local_snapshots
+          for label in available_local_snapshots:
+            zvol['attributes']['com_sun_auto_snapshot_{}'.format(label)] = label in label_list
 
+        facts['zvols'].append(zvol)
       # Create iSCSI target config, if it doesn't already exist
       if vm_facts_variant == 'storage' and not any(d['name'] == fs_prefix + org + '-' + host
                                                    for d in facts['iscsi_targets']):
-        target = generateIscsiTarget(org + '-' + host, fs_prefix + org + '/' + host)
+        target = generateIscsiTarget(org + '-' + host, fs_name)
         facts['iscsi_targets'].append(target)
 
     # If the VM wants ZFS filesystems (the default), configure them and export them via NFS
@@ -156,6 +166,18 @@ def generateFacts(original_facts, storage_host):
         # Set to readonly if on backup
         if vm_facts_variant == 'backup':
           attributes['readonly'] = 'on'
+
+        # Create configuration for zfs-auto-snapshot script
+        if vm_facts_variant == 'storage' and ('local_snapshots' not in config and len(default_local_snapshots) > 0
+                                              or len(config['local_snapshots']) > 0):
+          label_list = default_local_snapshots
+          if 'local_snapshots' in fs:
+            label_list = fs['local_snapshots']
+          elif 'local_snapshots' in config:
+            label_list = config['local_snapshots']
+          for label in available_local_snapshots:
+            attributes['com_sun_auto_snapshot_{}'.format(label)] = label in label_list
+
         # Create and add root and data filesystems if necessary
         if fs_prefix + org + '/' + host + '-' + fs['name'] not in facts['zfs_filesystems']:
           zfs_fs = {'name': fs_prefix + org + '/' + host + '-' + fs['name'], 'attributes': attributes}
