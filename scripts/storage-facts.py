@@ -163,9 +163,10 @@ def generateFacts(original_facts, storage_host):
               'vm_facts_default_root_reservation'] if 'vm_facts_default_root_reservation' in facts else config['size']
         # Don't share via NFS on backup hosts
         attributes['sharenfs'] = 'off' if not nfs_options_to_set else ','.join(sorted(set(nfs_options_to_set)))
-        # Set to readonly if on backup
+        # Set to readonly and remove quota if on backup
         if vm_facts_variant == 'backup':
           attributes['readonly'] = 'on'
+          attributes['quota'] = 'none'
 
         # Create configuration for zfs-auto-snapshot script
         if vm_facts_variant == 'storage' and ('local_snapshots' not in config and len(default_local_snapshots) > 0
