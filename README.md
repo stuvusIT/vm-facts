@@ -58,7 +58,12 @@ This table only lists the options used in this role, see [xen-vman](https://gith
 
 #### filesystems
 
-`vm.filesystems` is a list of dicts that describe filesystems for one VM. A `root` filesystem will always be created, with `quota` set to the VM `size` value, `reservation` set to the global default value or also the VM `size` (see above) and the NFS option `no_root_squash` added. On hosts with `vm_facts_variant`=`backup`, no NFS options will be added and the filesystems or volumes will be set to readonly. The `filesystems` var is only respected if `storage_type` is `filesystem`.
+`vm.filesystems` is a list of dicts that describe filesystems for one VM.
+A `root` filesystem will always be created, with `quota` set to the VM `size` value, `reservation` set to the global default value or also the VM `size` (see above) and the NFS option `no_root_squash` added.
+On hosts with `vm_facts_variant`=`backup`, no NFS options will be added and the filesystems or volumes will be set to readonly and the `quota` set to `none`.
+Quotas in ZFS sum up not only the filesystem, but also its decendants such as snapshots.
+Therefore the quota intended for the storage of a VM will limit the amount of snapshots of it that can be stored on the backup host.
+The `filesystems` var is only respected if `storage_type` is `filesystem`.
 
 | Name              |                        Default / Mandatory                        | Description                                                                                                                                                                                                                                                                                                                              |
 |:------------------|:-----------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -124,7 +129,7 @@ ansible_host: 192.168.10.52
 
 ### Result
 
-Assuming the vm is named `web01`, these two filesystems will be created:
+Assuming the vm is named `web01`, these two filesystems will be created on the storage server:
 
 |            Name            | ZFS attributes                                                                               |
 |:--------------------------:|:---------------------------------------------------------------------------------------------|
