@@ -41,7 +41,7 @@ def generateFacts(original_facts, storage_host):
   backup_prefix = facts[
     'vm_facts_backup_zfs_parent_prefix'] if 'vm_facts_backup_zfs_parent_prefix' in facts else 'tank/'
   # List of NFS options that will be set on all exports
-  nfs_options = facts['vm_facts_nfs_options'] if 'vm_facts_nfs_options' in facts else []
+  nfs_options = facts['vm_facts_nfs_options'] if 'vm_facts_nfs_options' in facts else ["no_root_squash"]
   # default hostnames, to use when a VM doesn't define a hypervisor/storage/backup host
   default_storage = facts['vm_facts_default_storage_host']
   default_hypervisor = facts['vm_facts_default_hypervisor_host']
@@ -153,10 +153,11 @@ def generateFacts(original_facts, storage_host):
         attributes = fs['zfs_attributes'] if 'zfs_attributes' in fs else {}
         # Use override NFS options if they exist, otherwise use the default
         nfs_options_to_set = fs['nfs_options'] + nfs_options if 'nfs_options' in fs else default_nfs_options
-        # Set sizes and no_root_squash if it is the root filesystem
+        # Set sizes and no_root_squash if it is the root filesystem.
         if fs['name'] == 'root':
           if vm_facts_variant == 'storage':
             attributes['quota'] = config['size']
+            # This squash option is forced because root access is necessary in all cases
             nfs_options_to_set.append('no_root_squash')
           if 'reservation' not in attributes:
             attributes['reservation'] = facts[
