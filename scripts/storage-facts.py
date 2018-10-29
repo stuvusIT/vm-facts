@@ -76,16 +76,19 @@ def generateFacts(original_facts, storage_host):
       'vm'] else default_hypervisor
     backup_for_vm = original_facts[host]['vm']['backup_host'] if 'backup_host' in original_facts[host][
       'vm'] else default_backup
-    # Skip VMs that should not be saved/backed up on the current host
-    if vm_facts_variant == 'storage' and storage_host != storage_for_vm:
-      continue
-    elif vm_facts_variant == 'backup':
-      fs_prefix = pool_prefix + storage_for_vm + '/vms/'
-      if storage_host != backup_for_vm:
-        continue
 
     # config is the vm dict of a specific VM host
     config = original_facts[host]['vm']
+
+    # Skip VMs that should not be saved/backed up on the current host
+    if vm_facts_variant == 'storage':
+      if storage_host != storage_for_vm or ('create_storage' in config and not config['create_storage']):
+        continue
+    elif vm_facts_variant == 'backup':
+      fs_prefix = pool_prefix + storage_for_vm + '/vms/'
+      if storage_host != backup_for_vm or ('create_backup' in config and not config['create_backup']):
+        continue
+
     # Don't create this vm if org or size are not set
     if 'org' in config:
       org = config['org']
