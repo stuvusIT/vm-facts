@@ -20,6 +20,7 @@
 - name: Set hypervisor facts
   set_fact:
     xen_vman_vms: "{{ (hypervisor_factgen.stdout|from_json).new_hostvars.xen_vman_vms }}"
+    vm_facts_move_hypervisors: "{{ (hypervisor_factgen.stdout|from_json).new_hostvars.vm_facts_move_hypervisors }}"
 
 - name: Remove temporary hypervisor hostvars file
   file:
