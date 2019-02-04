@@ -142,7 +142,10 @@ for host in original_facts.keys():
             facts['vm_facts_move_storages'].append(
                 {'source_storage': storage_host, 'source_dataset': fs_name,
                  'target_storage': storage_for_vm,
-                 'target_dataset_suffix': org + '/' + host})
+                 'target_dataset_suffix': org + '/' + host,
+                 'source_backup_dataset': backup_prefix + storage_host + '/vms/' + org + '/' + host,
+                 'target_backup_dataset': backup_prefix + storage_for_vm + '/vms/' + org + '/' + host,
+                 'backup_host': backup_for_vm})
 
     # If the VM wants ZFS filesystems (the default), configure them and export them via NFS
     else:
@@ -209,9 +212,15 @@ for host in original_facts.keys():
             # Collect data needed to move VM datasets
             if 'pull_storage_from' in config and config['pull_storage_from'] == storage_host:
                 facts['vm_facts_move_storages'].append(
-                    {'source_storage': storage_host, 'source_dataset': fs_prefix + org + '/' + host + '-' + fs['name'],
+                    {'source_storage': storage_host,
+                     'source_dataset': fs_prefix + org + '/' + host + '-' + fs['name'],
                      'target_storage': storage_for_vm,
-                     'target_dataset_suffix': org + '/' + host + '-' + fs['name']})
+                     'target_dataset_suffix': org + '/' + host + '-' + fs['name'],
+                     'source_backup_dataset': backup_prefix + storage_host + '/vms/' + org + '/' + host + '-' + fs[
+                         'name'],
+                     'target_backup_dataset': backup_prefix + storage_for_vm + '/vms/' + org + '/' + host + '-' + fs[
+                         'name'],
+                     'backup_host': backup_for_vm})
 
 facts['zfs_filesystems'] = sorted(facts['zfs_filesystems'], key=lambda k: k['name'])
 facts['zvols'] = sorted(facts['zvols'], key=lambda k: k['name'])
