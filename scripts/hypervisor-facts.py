@@ -30,17 +30,27 @@ def generateFacts(original_facts, hypervisor_host):
   # Create list if it doesn't already exist
   if 'xen_vman_vms' not in facts:
     facts['xen_vman_vms'] = []
+  if 'vm_facts_move_hypervisors' not in facts:
+    facts['vm_facts_move_hypervisors'] = []
 
   # Traverse every host defined in hostvars
   for host in original_facts.keys():
     # Ignore physical hosts
     if 'vm' not in original_facts[host]:
       continue
-    hypervisor_for_vm = original_facts[host]['vm']['hypervisor_host'] if 'hypervisor_host' in original_facts[host][
-      'vm'] else default_hypervisor
-    if hypervisor_host != hypervisor_for_vm:
-      continue
     # config is the vm dict of a specific VM host
+    config = original_facts[host]['vm']
+    # Limit hosts to those defined in vm_facts_limit_hosts
+    if 'vm_facts_limit_hosts' in facts and host not in facts['vm_facts_limit_hosts']:
+      continue
+    hypervisor_for_vm = config['hypervisor_host'] if 'hypervisor_host' in config else default_hypervisor
+    if hypervisor_host != hypervisor_for_vm and (
+        'pull_hypervisor_from' not in config or config['pull_hypervisor_from'] != hypervisor_host):
+      continue
+    # Limit hosts to those defined in vm_facts_limit_hosts
+    if 'vm_facts_limit_hosts' in facts and host not in facts['vm_facts_limit_hosts']:
+      continue
+
     config = original_facts[host]['vm']
     config['name'] = host
     # Ignore manually defined vms
@@ -81,7 +91,13 @@ def generateFacts(original_facts, hypervisor_host):
     if 'filesystems' in config:
       del config['filesystems']
 
-    facts['xen_vman_vms'].append(config)
+    if hypervisor_host == hypervisor_for_vm:
+      facts['xen_vman_vms'].append(config)
+    elif 'pull_hypervisor_from' in config and config['pull_hypervisor_from'] == hypervisor_host:
+      # Collect data needed to move VM datasets
+      facts['vm_facts_move_hypervisors'].append(
+        {'org': config['org'], 'host': host, 'source_hypervisor': hypervisor_host,
+         'destination_hypervisor': hypervisor_for_vm})
 
   # Return the result, consisting of the failed hosts and the extended hostvars for the current hypervisor
   result = {'failed_hosts': failed_names, 'new_hostvars': facts}

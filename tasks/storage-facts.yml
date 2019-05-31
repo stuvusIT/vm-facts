@@ -23,6 +23,7 @@
     zvols: "{{ (storage_factgen.stdout|from_json).new_hostvars.zvols }}"
     iscsi_targets: "{{ (storage_factgen.stdout|from_json).new_hostvars.iscsi_targets }}"
     iscsi_disk_path_prefix: "{{ (storage_factgen.stdout|from_json).new_hostvars.iscsi_disk_path_prefix }}"
+    vm_facts_move_storages: "{{ (storage_factgen.stdout|from_json).new_hostvars.vm_facts_move_storages}}"
 
 - name: Remove temporary storage hostvars file
   file:

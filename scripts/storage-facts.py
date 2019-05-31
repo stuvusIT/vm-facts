@@ -58,6 +58,8 @@ def generateFacts(original_facts, storage_host):
     facts['zvols'] = []
   if 'iscsi_disk_path_prefix' not in facts:
     facts['iscsi_disk_path_prefix'] = '/dev/zvol/'
+  if 'vm_facts_move_storages' not in facts:
+    facts['vm_facts_move_storages'] = []
 
   default_local_snapshots = ['hourly']
   available_local_snapshots = ['frequent', 'hourly', 'daily', 'weekly', 'monthly']
@@ -68,6 +70,9 @@ def generateFacts(original_facts, storage_host):
     if vm_facts_variant == 'illegal':
       break
     if 'vm' not in original_facts[host]:
+      continue
+    # Limit hosts to those defined in vm_facts_limit_hosts
+    if 'vm_facts_limit_hosts' in facts and host not in facts['vm_facts_limit_hosts']:
       continue
     # Determine the storage, hypervisor and backup host to be used for this VM
     storage_for_vm = original_facts[host]['vm']['storage_host'] if 'storage_host' in original_facts[host][
@@ -82,7 +87,9 @@ def generateFacts(original_facts, storage_host):
 
     # Skip VMs that should not be saved/backed up on the current host
     if vm_facts_variant == 'storage':
-      if storage_host != storage_for_vm or ('create_storage' in config and not config['create_storage']):
+      if (storage_host != storage_for_vm or ('create_storage' in config and not config['create_storage'])) and (
+          ('pull_storage_from' not in config) or (
+          'pull_storage_from' in config and storage_host != config['pull_storage_from'])):
         continue
     elif vm_facts_variant == 'backup':
       fs_prefix = pool_prefix + storage_for_vm + '/vms/'
@@ -132,6 +139,16 @@ def generateFacts(original_facts, storage_host):
                                                    for d in facts['iscsi_targets']):
         target = generateIscsiTarget(org + '-' + host, fs_name)
         facts['iscsi_targets'].append(target)
+
+      # Collect data needed to move VM datasets
+      if 'pull_storage_from' in config and config['pull_storage_from'] == storage_host:
+        facts['vm_facts_move_storages'].append(
+          {'source_storage': storage_host, 'source_dataset': fs_name,
+           'target_storage': storage_for_vm,
+           'target_dataset_suffix': org + '/' + host,
+           'source_backup_dataset': backup_prefix + storage_host + '/vms/' + org + '/' + host,
+           'target_backup_dataset': backup_prefix + storage_for_vm + '/vms/' + org + '/' + host,
+           'backup_host': backup_for_vm})
 
     # If the VM wants ZFS filesystems (the default), configure them and export them via NFS
     else:
@@ -191,6 +208,19 @@ def generateFacts(original_facts, storage_host):
               'replicate_target': backup_prefix + storage_for_vm + '/vms/' + org + '/' + host + '-' + fs['name']
             }
           facts['zfs_filesystems'].append(zfs_fs)
+
+        # Collect data needed to move VM datasets
+        if 'pull_storage_from' in config and config['pull_storage_from'] == storage_host:
+          facts['vm_facts_move_storages'].append(
+            {'source_storage': storage_host,
+             'source_dataset': fs_prefix + org + '/' + host + '-' + fs['name'],
+             'target_storage': storage_for_vm,
+             'target_dataset_suffix': org + '/' + host + '-' + fs['name'],
+             'source_backup_dataset': backup_prefix + storage_host + '/vms/' + org + '/' + host + '-' + fs[
+               'name'],
+             'target_backup_dataset': backup_prefix + storage_for_vm + '/vms/' + org + '/' + host + '-' + fs[
+               'name'],
+             'backup_host': backup_for_vm})
 
   facts['zfs_filesystems'] = sorted(facts['zfs_filesystems'], key=lambda k: k['name'])
   facts['zvols'] = sorted(facts['zvols'], key=lambda k: k['name'])
