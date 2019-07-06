@@ -60,9 +60,14 @@ def generateFacts(original_facts, storage_host):
     facts['iscsi_disk_path_prefix'] = '/dev/zvol/'
   if 'vm_facts_move_storages' not in facts:
     facts['vm_facts_move_storages'] = []
+  if 'vm_facts_check_snapshots' not in facts:
+    facts['vm_facts_check_snapshots'] = {}
 
   default_local_snapshots = ['hourly']
-  available_local_snapshots = ['frequent', 'hourly', 'daily', 'weekly', 'monthly']
+  AVAILABLE_LOCAL_SNAPSHOTS = ['frequent', 'hourly', 'daily', 'weekly', 'monthly']
+
+  for frequency in AVAILABLE_LOCAL_SNAPSHOTS:
+    facts['vm_facts_check_snapshots'][frequency] = []
 
   # Traverse every host defined in hostvars
   for host in original_facts.keys():
@@ -117,10 +122,10 @@ def generateFacts(original_facts, storage_host):
     # If the VM wants a ZVOL (virtual block device), create it and export it via iSCSI
     if storage_type == 'blockdevice':
       # Create ZVOL if it doesn't already exist
-      fs_name = fs_prefix + org + '/' + host
-      if not any(d['name'] == fs_name for d in facts['zvols']):
+      dataset_name = fs_prefix + org + '/' + host
+      if not any(d['name'] == dataset_name for d in facts['zvols']):
         # volsize must be set at creation and cannot be changed later on
-        zvol = {'name': fs_name, 'attributes': {'volsize': config['size']}}
+        zvol = {'name': dataset_name, 'attributes': {'volsize': config['size']}}
         if vm_facts_variant == 'storage':
           zvol['snapshots'] = {'replicate_target': backup_prefix + storage_for_vm + '/vms/' + org + '/' + host}
         else:  # Backup variant
@@ -130,14 +135,14 @@ def generateFacts(original_facts, storage_host):
         if vm_facts_variant == 'storage' and ('local_snapshots' not in config and len(default_local_snapshots) > 0
                                               or len(config['local_snapshots']) > 0):
           label_list = config['local_snapshots'] if 'local_snapshots' in config else default_local_snapshots
-          for label in available_local_snapshots:
+          for label in AVAILABLE_LOCAL_SNAPSHOTS:
             zvol['attributes']['com_sun_auto_snapshot_{}'.format(label)] = label in label_list
 
         facts['zvols'].append(zvol)
+
       # Create iSCSI target config, if it doesn't already exist
-      if vm_facts_variant == 'storage' and not any(d['name'] == fs_prefix + org + '-' + host
-                                                   for d in facts['iscsi_targets']):
-        target = generateIscsiTarget(org + '-' + host, fs_name)
+      if vm_facts_variant == 'storage' and not any(d['name'] == dataset_name for d in facts['iscsi_targets']):
+        target = generateIscsiTarget(org + '-' + host, dataset_name)
         facts['iscsi_targets'].append(target)
 
       # Collect data needed to move VM datasets
@@ -149,6 +154,11 @@ def generateFacts(original_facts, storage_host):
            'source_backup_dataset': backup_prefix + storage_host + '/vms/' + org + '/' + host,
            'target_backup_dataset': backup_prefix + storage_for_vm + '/vms/' + org + '/' + host,
            'backup_host': backup_for_vm})
+
+      # Every dataset gets snapshotted daily on storage and transferred to backup by zfs-snap-manager.
+      # -> no variant checking necessary
+      if dataset_name not in facts['vm_facts_check_snapshots']['daily']:
+        facts['vm_facts_check_snapshots']['daily'].append(dataset_name)
 
     # If the VM wants ZFS filesystems (the default), configure them and export them via NFS
     else:
@@ -189,6 +199,8 @@ def generateFacts(original_facts, storage_host):
           attributes['readonly'] = 'on'
           attributes['quota'] = 'none'
 
+        dataset_name = fs_prefix + org + '/' + host + '-' + fs['name']
+
         # Create configuration for zfs-auto-snapshot script
         if vm_facts_variant == 'storage' and ('local_snapshots' not in config and len(default_local_snapshots) > 0
                                               or len(config['local_snapshots']) > 0):
@@ -197,12 +209,19 @@ def generateFacts(original_facts, storage_host):
             label_list = fs['local_snapshots']
           elif 'local_snapshots' in config:
             label_list = config['local_snapshots']
-          for label in available_local_snapshots:
+          for label in AVAILABLE_LOCAL_SNAPSHOTS:
             attributes['com_sun_auto_snapshot_{}'.format(label)] = label in label_list
+            if label in label_list:
+              facts['vm_facts_check_snapshots'][label].append(dataset_name)
+
+        # Every filesystem gets snapshotted daily on storage and transferred to backup by zfs-snap-manager.
+        # -> no variant checking necessary
+        if dataset_name not in facts['vm_facts_check_snapshots']['daily']:
+          facts['vm_facts_check_snapshots']['daily'].append(dataset_name)
 
         # Create and add root and data filesystems if necessary
-        if fs_prefix + org + '/' + host + '-' + fs['name'] not in facts['zfs_filesystems']:
-          zfs_fs = {'name': fs_prefix + org + '/' + host + '-' + fs['name'], 'attributes': attributes}
+        if dataset_name not in facts['zfs_filesystems']:
+          zfs_fs = {'name': dataset_name, 'attributes': attributes}
           if vm_facts_variant == 'storage':
             zfs_fs['snapshots'] = {
               'replicate_target': backup_prefix + storage_for_vm + '/vms/' + org + '/' + host + '-' + fs['name']
