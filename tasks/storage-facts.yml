@@ -24,6 +24,13 @@
     iscsi_targets: "{{ (storage_factgen.stdout|from_json).new_hostvars.iscsi_targets }}"
     iscsi_disk_path_prefix: "{{ (storage_factgen.stdout|from_json).new_hostvars.iscsi_disk_path_prefix }}"
     vm_facts_move_storages: "{{ (storage_factgen.stdout|from_json).new_hostvars.vm_facts_move_storages}}"
+    icinga2_check_zfs_snapshots: "{{ (storage_factgen.stdout|from_json).new_hostvars.vm_facts_check_snapshots }}"
+
+- name: Save dataset lists to /var/local to be used in snapshot checks
+  copy:
+    dest: "/var/local/icinga2_check_zfs_snapshots_{{ item.key }}"
+    content: "{{ item.value | sort | join('\n') }}"
+  loop: "{{ icinga2_check_zfs_snapshots | dict2items }}"
 
 - name: Remove temporary storage hostvars file
   file:
