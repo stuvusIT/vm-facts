@@ -40,12 +40,15 @@ def generateFacts(original_facts, storage_host):
   # ZFS filesystem prefix on the backup host (where filesystems will be sent to using zfs-snap-manager)
   backup_prefix = facts[
     'vm_facts_backup_zfs_parent_prefix'] if 'vm_facts_backup_zfs_parent_prefix' in facts else 'tank/'
+  backup_replication_prefix = facts[
+    'vm_facts_backup_replication_zfs_parent_prefix'] if 'vm_facts_backup_replication_zfs_parent_prefix' in facts else 'tank/'
   # List of NFS options that will be set on all exports
   nfs_options = facts['vm_facts_nfs_options'] if 'vm_facts_nfs_options' in facts else ["no_root_squash"]
   # default hostnames, to use when a VM doesn't define a hypervisor/storage/backup host
   default_storage = facts['vm_facts_default_storage_host']
   default_hypervisor = facts['vm_facts_default_hypervisor_host']
   default_backup = facts['vm_facts_default_backup_host']
+  default_backup_replication = facts['vm_facts_default_backup_replication_host']
 
   # List of hostnames that have missing VM vars. This lists will be printed in tasks for easier debugging
   failed_names = {'size': [], 'org': []}
@@ -86,6 +89,9 @@ def generateFacts(original_facts, storage_host):
       'vm'] else default_hypervisor
     backup_for_vm = original_facts[host]['vm']['backup_host'] if 'backup_host' in original_facts[host][
       'vm'] else default_backup
+    backup_replication_for_vm = original_facts[host]['vm']['backup_replication_host'] if 'backup_replication_host' in \
+                                                                                         original_facts[host][
+                                                                                           'vm'] else default_backup_replication
 
     # config is the vm dict of a specific VM host
     config = original_facts[host]['vm']
@@ -98,7 +104,8 @@ def generateFacts(original_facts, storage_host):
         continue
     elif vm_facts_variant == 'backup':
       fs_prefix = pool_prefix + storage_for_vm + '/vms/'
-      if storage_host != backup_for_vm or ('create_backup' in config and not config['create_backup']):
+      if (storage_host != backup_for_vm and storage_host != backup_replication_for_vm) or (
+          'create_backup' in config and not config['create_backup']):
         continue
 
     # Don't create this vm if org or size are not set
@@ -130,6 +137,10 @@ def generateFacts(original_facts, storage_host):
           zvol['snapshots'] = {'replicate_target': backup_prefix + storage_for_vm + '/vms/' + org + '/' + host}
         else:  # Backup variant
           zvol['attributes']['readonly'] = 'on'
+          # If this is the first backup host, configure replication to the replication backup host
+          if storage_host == backup_for_vm:
+            zvol['snapshots'] = {
+              'replicate_target': backup_replication_prefix + storage_for_vm + '/vms/' + org + '/' + host}
 
         # Create configuration for zfs-auto-snapshot script
         if vm_facts_variant == 'storage' and ('local_snapshots' not in config and len(default_local_snapshots) > 0
@@ -225,6 +236,12 @@ def generateFacts(original_facts, storage_host):
           if vm_facts_variant == 'storage':
             zfs_fs['snapshots'] = {
               'replicate_target': backup_prefix + storage_for_vm + '/vms/' + org + '/' + host + '-' + fs['name']
+            }
+          elif vm_facts_variant == 'backup' and storage_host == backup_for_vm:
+            # If this is the first backup host, configure replication to the replication backup host
+            zfs_fs['snapshots'] = {
+              'replicate_target': backup_replication_prefix + storage_for_vm + '/vms/' + org + '/' + host + '-' + fs[
+                'name']
             }
           facts['zfs_filesystems'].append(zfs_fs)
 
