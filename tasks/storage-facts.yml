@@ -44,7 +44,7 @@
   failed_when: (storage_factgen.stdout|from_json).failed_hosts.size|length>0
 
 - name: "There are {{ (storage_factgen.stdout|from_json).failed_hosts.org|length }} VMs without organization var"
-  fail: 
+  fail:
     msg: "{{ item }}"
   with_items: "{{ (storage_factgen.stdout|from_json).failed_hosts.org }}"
   failed_when: (storage_factgen.stdout|from_json).failed_hosts.org|length>0
