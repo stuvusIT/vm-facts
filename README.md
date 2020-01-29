@@ -42,7 +42,7 @@ A Linux distribution.
 
 ## Role Variables (VM hostvars)
 
-As this role looks at all `hostvars`, some variables, especially the `vm` block are relevant. 
+As this role looks at all `hostvars`, some variables, especially the `vm` block are relevant.
 This table only lists the options used in this role, see [xen-vman](https://github.com/stuvusIT/xen_vman#vm-variables) for other possible and mandatory vars inside the `vm` dict.
 
 ### vm
