@@ -70,7 +70,8 @@ def generateFacts(original_facts, storage_host):
   AVAILABLE_LOCAL_SNAPSHOTS = ['frequent', 'hourly', 'daily', 'weekly', 'monthly']
 
   for frequency in AVAILABLE_LOCAL_SNAPSHOTS:
-    facts['vm_facts_check_snapshots'][frequency] = []
+    if frequency not in facts['vm_facts_check_snapshots'].keys():
+      facts['vm_facts_check_snapshots'][frequency] = []
 
   # Traverse every host defined in hostvars
   for host in original_facts.keys():
