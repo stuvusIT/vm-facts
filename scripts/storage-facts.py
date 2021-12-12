@@ -18,6 +18,10 @@ def main():
     p.print_help()
 
 
+def unique(list):
+  """Returns a list with all unqiue elements of the given list. Preserves order."""
+  return sorted(set(list), key=lambda x: list.index(x))
+
 def generateIscsiTarget(name, path):
   """Generates the configuration for an iSCSI target"""
   target = {'name': name, 'disks': {'name': name, 'path': path}}
@@ -178,11 +182,11 @@ def generateFacts(original_facts, storage_host):
       default_nfs_options = list(nfs_options)
       # Add VM IP as rw export
       if vm_facts_variant == 'storage' and 'ansible_host' in original_facts[host]:
-        default_nfs_options.append("rw=@" + original_facts[host]['ansible_host'])
+        default_nfs_options.insert(0, "rw=@" + original_facts[host]['ansible_host'])
       nfs_options_rw_hypervisor = "rw=@{}".format(original_facts[hypervisor_for_vm]['ansible_host'])
       # Add the IP of the used hypervisor as NFS rw export
       if vm_facts_variant == 'storage' and nfs_options_rw_hypervisor not in default_nfs_options:
-        default_nfs_options.append(nfs_options_rw_hypervisor)
+        default_nfs_options.insert(0, nfs_options_rw_hypervisor)
 
       filesystems = config['filesystems'] if 'filesystems' in config else []
       # Add root filesystem if it has not been defined by hand
@@ -205,7 +209,7 @@ def generateFacts(original_facts, storage_host):
             attributes['reservation'] = facts[
               'vm_facts_default_root_reservation'] if 'vm_facts_default_root_reservation' in facts else config['size']
         # Don't share via NFS on backup hosts
-        attributes['sharenfs'] = 'off' if not nfs_options_to_set else ','.join(sorted(set(nfs_options_to_set)))
+        attributes['sharenfs'] = 'off' if not nfs_options_to_set else ','.join(unique(nfs_options_to_set))
         # Set to readonly and remove quota if on backup
         if vm_facts_variant == 'backup':
           attributes['readonly'] = 'on'
