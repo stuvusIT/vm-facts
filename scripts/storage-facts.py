@@ -196,6 +196,7 @@ def generateFacts(original_facts, storage_host):
       for fs in filesystems:
         if 'name' not in fs:
           continue
+        effective_fs_prefix = fs['storage_custom_fs_prefix'] if 'storage_custom_fs_prefix' in fs else fs_prefix
         attributes = fs['zfs_attributes'] if 'zfs_attributes' in fs else {}
         # Use override NFS options if they exist, otherwise use the default
         nfs_options_to_set = fs['nfs_options'] + nfs_options if 'nfs_options' in fs else default_nfs_options
@@ -215,7 +216,7 @@ def generateFacts(original_facts, storage_host):
           attributes['readonly'] = 'on'
           attributes['quota'] = 'none'
 
-        dataset_name = fs_prefix + org + '/' + host + '-' + fs['name']
+        dataset_name = effective_fs_prefix + org + '/' + host + '-' + fs['name']
 
         # Create configuration for zfs-auto-snapshot script
         if vm_facts_variant == 'storage' and ('local_snapshots' not in config and len(default_local_snapshots) > 0
@@ -254,7 +255,7 @@ def generateFacts(original_facts, storage_host):
         if 'pull_storage_from' in config and config['pull_storage_from'] == storage_host:
           facts['vm_facts_move_storages'].append(
             {'source_storage': storage_host,
-             'source_dataset': fs_prefix + org + '/' + host + '-' + fs['name'],
+             'source_dataset': effective_fs_prefix + org + '/' + host + '-' + fs['name'],
              'target_storage': storage_for_vm,
              'target_dataset_suffix': org + '/' + host + '-' + fs['name'],
              'source_backup_dataset': backup_prefix + storage_host + '/vms/' + org + '/' + host + '-' + fs[
