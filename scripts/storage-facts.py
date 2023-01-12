@@ -196,7 +196,7 @@ def generateFacts(original_facts, storage_host):
       for fs in filesystems:
         if 'name' not in fs:
           continue
-        effective_fs_prefix = fs['storage_custom_fs_prefix'] if 'storage_custom_fs_prefix' in fs else fs_prefix
+        effective_fs_prefix = fs['storage_custom_fs_prefix'] if 'storage_custom_fs_prefix' in fs and vm_facts_variant == 'storage' else fs_prefix
         attributes = fs['zfs_attributes'] if 'zfs_attributes' in fs else {}
         # Use override NFS options if they exist, otherwise use the default
         nfs_options_to_set = fs['nfs_options'] + nfs_options if 'nfs_options' in fs else default_nfs_options
