@@ -15,8 +15,8 @@ A Linux distribution.
 | `vm_facts_generate_backup_facts`           | `False`                  | Flag to activate fact generation for storage variables (ZFS).                                                              |
 | `vm_facts_generate_hypervisor_facts`       | `False`                  | Flag to activate fact generation for hypervisor variables (Xen).                                                           |
 | `vm_facts_default_hypervisor_host`         | :heavy_check_mark:       | Inventory name of the default hypervisor, used when a VM doesn't specify its own `hypervisor_host`.                        |
-| `vm_facts_default_backup_host`             | :heavy_check_mark:       | Inventory name of the default backup server, used when a VM doesn't specify its own `backup_host`.                         |
-| `vm_facts_default_backup_replication_host` | :heavy_check_mark:       | Inventory name of the default backup replication server, used when a VM doesn't specify its own `backup_replication_host`. |
+| `vm_facts_default_backup_host`             | Empty String       | If defined, Inventory name of the default backup server, used when a VM doesn't specify its own `backup_host`.                         |
+| `vm_facts_default_backup_replication_host` | Empty String       | If defined, Inventory name of the default backup replication server, used when a VM doesn't specify its own `backup_replication_host`. |
 | `vm_facts_default_storage_host`            | :heavy_check_mark:       | Inventory name of the default storage server, used when a VM doesn't specify its own `storage_host`.                       |
 | `vm_facts_limit_hosts`                     | :heavy_multiplication_x: | If defined, only the hosts in this list will be considered for fact generation.                                            |
 

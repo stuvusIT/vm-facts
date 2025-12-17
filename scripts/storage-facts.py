@@ -51,8 +51,8 @@ def generateFacts(original_facts, storage_host):
   # default hostnames, to use when a VM doesn't define a hypervisor/storage/backup host
   default_storage = facts['vm_facts_default_storage_host']
   default_hypervisor = facts['vm_facts_default_hypervisor_host']
-  default_backup = facts['vm_facts_default_backup_host']
-  default_backup_replication = facts['vm_facts_default_backup_replication_host']
+  default_backup = facts['vm_facts_default_backup_host'] if 'vm_facts_default_backup_host' in facts else ''
+  default_backup_replication = facts['vm_facts_default_backup_replication_host'] if 'vm_facts_default_backup_replication_host' in facts else ''
 
   # List of hostnames that have missing VM vars. This lists will be printed in tasks for easier debugging
   failed_names = {'size': [], 'org': []}
